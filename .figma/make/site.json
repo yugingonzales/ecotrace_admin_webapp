@@ -1,0 +1,10 @@
+{
+  "description": "Streamline tree planting verification with an intuitive dashboard for admins and students, enabling real-time monitoring, batch approvals, and detailed analytics.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
