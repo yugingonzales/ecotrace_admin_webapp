@@ -7,10 +7,10 @@ const events = [
     year: '2025–2026',
     start: 'Apr 15, 2026',
     end: 'May 15, 2026',
-    quota: 5,
-    students: 1250,
-    target: 6250,
-    verified: 3812,
+    quota: 50,
+    staff: 45,
+    target: 2250,
+    verified: 1680,
     pending: 38,
     incidents: 7,
     zone: 'Zone A – Main Campus',
@@ -22,10 +22,10 @@ const events = [
     year: '2025–2026',
     start: 'Apr 1, 2026',
     end: 'Apr 30, 2026',
-    quota: 5,
-    students: 500,
-    target: 2500,
-    verified: 940,
+    quota: 50,
+    staff: 20,
+    target: 1000,
+    verified: 420,
     pending: 6,
     incidents: 3,
     zone: 'Zone B – Annex Field',
@@ -37,10 +37,10 @@ const events = [
     year: '2025–2026',
     start: 'May 1, 2026',
     end: 'Jun 30, 2026',
-    quota: 5,
-    students: 300,
-    target: 1500,
-    verified: 210,
+    quota: 50,
+    staff: 15,
+    target: 750,
+    verified: 95,
     pending: 3,
     incidents: 2,
     zone: 'Zone C – Hillside Reserve',
@@ -52,10 +52,10 @@ const events = [
     year: '2024–2025',
     start: 'Sep 1, 2025',
     end: 'Oct 31, 2025',
-    quota: 3,
-    students: 980,
-    target: 2940,
-    verified: 2880,
+    quota: 30,
+    staff: 35,
+    target: 1050,
+    verified: 1020,
     pending: 0,
     incidents: 12,
     zone: 'Zone A – Main Campus',
@@ -73,7 +73,7 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     title: '',
     description: '',
     year: '2025–2026',
-    quota: '5',
+    quota: '50',
     start: '',
     end: '',
     zone: '',
@@ -90,8 +90,8 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     }))
   }
 
-  const estStudents = form.year === '2025–2026' ? 1250 : form.year === '2024–2025' ? 980 : 0
-  const estTarget = estStudents * Number(form.quota || 0)
+  const estStaff = form.year === '2025–2026' ? 45 : form.year === '2024–2025' ? 35 : 0
+  const estTarget = estStaff * Number(form.quota || 0)
 
   return (
     <div className="overlay">
@@ -99,23 +99,23 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
         <div className="modal-header">
           <div>
             <h2 className="modal-title">Create New Event</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Configure verification event details and student quota</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Configure verification event details and staff assignment</p>
           </div>
           <button onClick={onClose} className="btn btn-sm">✕</button>
         </div>
 
         <div className="modal-body space-y-5">
-          {/* Student Cohort Indicator */}
-          {estStudents > 0 && (
+          {/* Staff Cohort Indicator */}
+          {estStaff > 0 && (
             <div className="flex items-start gap-3 p-3 rounded-lg" style={{ background: 'var(--accent-soft)', border: '1px solid rgba(47,158,110,0.3)' }}>
               <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 mt-0.5 flex-shrink-0" stroke="var(--accent-dark)" strokeWidth="1.5">
                 <circle cx="8" cy="8" r="7" />
                 <path d="M5.5 8.5l2 2 3-3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <div className="text-xs" style={{ color: 'var(--accent-dark)' }}>
-                <strong>{estStudents.toLocaleString()} active students</strong> in S.Y. {form.year} will be automatically assigned.
+                <strong>{estStaff.toLocaleString()} active staff</strong> in S.Y. {form.year} will be automatically assigned.
                 {estTarget > 0 && (
-                  <> Total target: <strong>{estTarget.toLocaleString()} trees</strong> ({form.quota} × {estStudents.toLocaleString()}).</>
+                  <> Total target: <strong>{estTarget.toLocaleString()} trees</strong> ({form.quota} × {estStaff.toLocaleString()}).</>
                 )}
               </div>
             </div>
@@ -155,7 +155,7 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
             </div>
 
             <div>
-              <label className="field-label">Quota per Student *</label>
+              <label className="field-label">Quota per Staff *</label>
               <div className="relative">
                 <input
                   type="number"
@@ -165,7 +165,7 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
                   max={50}
                   onChange={e => setForm(f => ({ ...f, quota: e.target.value }))}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--text-muted)' }}>trees/student</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--text-muted)' }}>trees/staff</span>
               </div>
             </div>
 
@@ -233,7 +233,7 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
               <label className="field-label">Event Guidelines</label>
               <textarea
                 className="textarea"
-                placeholder="Instructions students will see when submitting verifications..."
+                placeholder="Instructions staff will see when submitting verifications..."
                 value={form.guidelines}
                 onChange={e => setForm(f => ({ ...f, guidelines: e.target.value }))}
               />
@@ -290,9 +290,9 @@ export default function EventManagement() {
           </div>
           <div className="grid grid-cols-5 divide-x" style={{ borderBottom: '1px solid var(--border)' }}>
             {[
-              { label: 'Target Trees', value: selectedEvent.target.toLocaleString(), sub: `${selectedEvent.quota} / student` },
+              { label: 'Target Trees', value: selectedEvent.target.toLocaleString(), sub: `${selectedEvent.quota} / staff` },
               { label: 'Verified', value: selectedEvent.verified.toLocaleString(), sub: `${Math.round(selectedEvent.verified / selectedEvent.target * 100)}% complete`, color: 'var(--accent)' },
-              { label: 'Active Students', value: selectedEvent.students.toLocaleString(), sub: `S.Y. ${selectedEvent.year}` },
+              { label: 'Active Staff', value: selectedEvent.staff.toLocaleString(), sub: `S.Y. ${selectedEvent.year}` },
               { label: 'Pending', value: selectedEvent.pending, sub: 'awaiting review', color: 'var(--warning)' },
               { label: 'Incidents', value: selectedEvent.incidents, sub: 'reports filed', color: 'var(--danger)' },
             ].map((s, i) => (
@@ -340,7 +340,7 @@ export default function EventManagement() {
               <th>Event Name</th>
               <th>S.Y.</th>
               <th>Duration</th>
-              <th className="num">Students</th>
+              <th className="num">Staff</th>
               <th className="num">Verified / Target</th>
               <th className="num">Incidents</th>
               <th className="text-center">Status</th>
@@ -365,7 +365,7 @@ export default function EventManagement() {
                     {ev.start}<br />
                     <span style={{ color: 'var(--text-faint)' }}>→ {ev.end}</span>
                   </td>
-                  <td className="num mono">{ev.students.toLocaleString()}</td>
+                  <td className="num mono">{ev.staff.toLocaleString()}</td>
                   <td className="num">
                     <div className="mono">
                       {ev.verified.toLocaleString()} / {ev.target.toLocaleString()}

@@ -5,7 +5,7 @@ interface TreeMarker {
   x: number
   y: number
   status: 'verified' | 'pending' | 'incident' | 'unverified'
-  studentName: string
+  staffName: string
   species: string
   datePlanted: string
   treeTag: string
@@ -13,21 +13,21 @@ interface TreeMarker {
 }
   
 const markers: TreeMarker[] = [
-  { id: 'TRE-0892', x: 42, y: 38, status: 'verified', studentName: 'Juan Santos', species: 'Narra', datePlanted: 'Mar 12, 2026', treeTag: 'TRE-0892', zone: 'Zone A' },
-  { id: 'TRE-0567', x: 55, y: 45, status: 'incident', studentName: 'Maria Reyes', species: 'Molave', datePlanted: 'Mar 15, 2026', treeTag: 'TRE-0567', zone: 'Zone A' },
-  { id: 'TRE-1204', x: 38, y: 52, status: 'pending', studentName: 'Carlo Diaz', species: 'Ipil', datePlanted: 'Mar 18, 2026', treeTag: 'TRE-1204', zone: 'Zone A' },
-  { id: 'TRE-0341', x: 65, y: 33, status: 'verified', studentName: 'Ana Lim', species: 'Mahogany', datePlanted: 'Mar 20, 2026', treeTag: 'TRE-0341', zone: 'Zone A' },
-  { id: 'TRE-0783', x: 72, y: 58, status: 'incident', studentName: 'Ben Cruz', species: 'Banaba', datePlanted: 'Mar 22, 2026', treeTag: 'TRE-0783', zone: 'Zone B' },
-  { id: 'TRE-1108', x: 48, y: 65, status: 'pending', studentName: 'Sofia Torres', species: 'Kamagong', datePlanted: 'Mar 25, 2026', treeTag: 'TRE-1108', zone: 'Zone A' },
-  { id: 'TRE-0223', x: 30, y: 44, status: 'verified', studentName: 'Rico Mendoza', species: 'Narra', datePlanted: 'Mar 28, 2026', treeTag: 'TRE-0223', zone: 'Zone A' },
-  { id: 'TRE-0950', x: 60, y: 72, status: 'incident', studentName: 'Lena Bautista', species: 'Molave', datePlanted: 'Apr 1, 2026', treeTag: 'TRE-0950', zone: 'Zone B' },
-  { id: 'TRE-0412', x: 25, y: 30, status: 'verified', studentName: 'Marc Tan', species: 'Ipil', datePlanted: 'Apr 3, 2026', treeTag: 'TRE-0412', zone: 'Zone A' },
-  { id: 'TRE-1056', x: 80, y: 42, status: 'unverified', studentName: 'Donna Uy', species: 'Narra', datePlanted: 'Apr 5, 2026', treeTag: 'TRE-1056', zone: 'Zone B' },
-  { id: 'TRE-0678', x: 35, y: 70, status: 'unverified', studentName: 'Kai Lopez', species: 'Mahogany', datePlanted: 'Apr 7, 2026', treeTag: 'TRE-0678', zone: 'Zone A' },
-  { id: 'TRE-0199', x: 52, y: 28, status: 'verified', studentName: 'Jess Flores', species: 'Banaba', datePlanted: 'Apr 9, 2026', treeTag: 'TRE-0199', zone: 'Zone A' },
-  { id: 'TRE-0834', x: 68, y: 48, status: 'pending', studentName: 'Chris Ramos', species: 'Narra', datePlanted: 'Apr 11, 2026', treeTag: 'TRE-0834', zone: 'Zone B' },
-  { id: 'TRE-0455', x: 44, y: 80, status: 'verified', studentName: 'Pat Soriano', species: 'Kamagong', datePlanted: 'Apr 13, 2026', treeTag: 'TRE-0455', zone: 'Zone A' },
-  { id: 'TRE-1320', x: 22, y: 58, status: 'pending', studentName: 'Kim Garcia', species: 'Ipil', datePlanted: 'Apr 15, 2026', treeTag: 'TRE-1320', zone: 'Zone A' },
+  { id: 'TRE-0892', x: 42, y: 38, status: 'verified', staffName: 'Juan Santos', species: 'Narra', datePlanted: 'Mar 12, 2026', treeTag: 'TRE-0892', zone: 'Zone A' },
+  { id: 'TRE-0567', x: 55, y: 45, status: 'incident', staffName: 'Maria Reyes', species: 'Molave', datePlanted: 'Mar 15, 2026', treeTag: 'TRE-0567', zone: 'Zone A' },
+  { id: 'TRE-1204', x: 38, y: 52, status: 'pending', staffName: 'Carlo Diaz', species: 'Ipil', datePlanted: 'Mar 18, 2026', treeTag: 'TRE-1204', zone: 'Zone A' },
+  { id: 'TRE-0341', x: 65, y: 33, status: 'verified', staffName: 'Ana Lim', species: 'Mahogany', datePlanted: 'Mar 20, 2026', treeTag: 'TRE-0341', zone: 'Zone A' },
+  { id: 'TRE-0783', x: 72, y: 58, status: 'incident', staffName: 'Ben Cruz', species: 'Banaba', datePlanted: 'Mar 22, 2026', treeTag: 'TRE-0783', zone: 'Zone B' },
+  { id: 'TRE-1108', x: 48, y: 65, status: 'pending', staffName: 'Sofia Torres', species: 'Kamagong', datePlanted: 'Mar 25, 2026', treeTag: 'TRE-1108', zone: 'Zone A' },
+  { id: 'TRE-0223', x: 30, y: 44, status: 'verified', staffName: 'Rico Mendoza', species: 'Narra', datePlanted: 'Mar 28, 2026', treeTag: 'TRE-0223', zone: 'Zone A' },
+  { id: 'TRE-0950', x: 60, y: 72, status: 'incident', staffName: 'Lena Bautista', species: 'Molave', datePlanted: 'Apr 1, 2026', treeTag: 'TRE-0950', zone: 'Zone B' },
+  { id: 'TRE-0412', x: 25, y: 30, status: 'verified', staffName: 'Marc Tan', species: 'Ipil', datePlanted: 'Apr 3, 2026', treeTag: 'TRE-0412', zone: 'Zone A' },
+  { id: 'TRE-1056', x: 80, y: 42, status: 'unverified', staffName: 'Donna Uy', species: 'Narra', datePlanted: 'Apr 5, 2026', treeTag: 'TRE-1056', zone: 'Zone B' },
+  { id: 'TRE-0678', x: 35, y: 70, status: 'unverified', staffName: 'Kai Lopez', species: 'Mahogany', datePlanted: 'Apr 7, 2026', treeTag: 'TRE-0678', zone: 'Zone A' },
+  { id: 'TRE-0199', x: 52, y: 28, status: 'verified', staffName: 'Jess Flores', species: 'Banaba', datePlanted: 'Apr 9, 2026', treeTag: 'TRE-0199', zone: 'Zone A' },
+  { id: 'TRE-0834', x: 68, y: 48, status: 'pending', staffName: 'Chris Ramos', species: 'Narra', datePlanted: 'Apr 11, 2026', treeTag: 'TRE-0834', zone: 'Zone B' },
+  { id: 'TRE-0455', x: 44, y: 80, status: 'verified', staffName: 'Pat Soriano', species: 'Kamagong', datePlanted: 'Apr 13, 2026', treeTag: 'TRE-0455', zone: 'Zone A' },
+  { id: 'TRE-1320', x: 22, y: 58, status: 'pending', staffName: 'Kim Garcia', species: 'Ipil', datePlanted: 'Apr 15, 2026', treeTag: 'TRE-1320', zone: 'Zone A' },
 ]
 
 const statusConfig = {
@@ -147,7 +147,7 @@ export default function MapView() {
                 <g transform={`translate(${px}, ${py})`}>
                   <rect x="0" y="0" width="30" height="18" rx="1.5" fill="var(--text)" stroke="rgba(255,255,255,0.15)" strokeWidth="0.4" />
                   <text x="2" y="4" fontSize="2.2" fill="var(--accent)">{activeMarker.treeTag}</text>
-                  <text x="2" y="7.5" fontSize="2" fill="rgba(255,255,255,0.85)">{activeMarker.studentName}</text>
+                  <text x="2" y="7.5" fontSize="2" fill="rgba(255,255,255,0.85)">{activeMarker.staffName}</text>
                   <text x="2" y="10.5" fontSize="1.9" fill="rgba(255,255,255,0.5)" fontStyle="italic">{activeMarker.species}</text>
                   <text x="2" y="13.5" fontSize="1.8" fill="rgba(255,255,255,0.4)">Planted: {activeMarker.datePlanted}</text>
                 </g>
@@ -188,8 +188,8 @@ export default function MapView() {
               </div>
               <div className="text-xs space-y-2 mb-3">
                 <div className="flex items-center justify-between">
-                  <span style={{ color: 'var(--text-muted)' }}>Student</span>
-                  <span className="font-medium">{activeMarker.studentName}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Staff</span>
+                  <span className="font-medium">{activeMarker.staffName}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span style={{ color: 'var(--text-muted)' }}>Species</span>

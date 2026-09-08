@@ -5,8 +5,9 @@ type SubStatus = 'pending' | 'approved' | 'declined' | 'resubmit'
 
 interface Submission {
   id: string
-  studentName: string
-  studentId: string
+  staffName: string
+  staffId: string
+  staffType: string
   treeTag: string
   species: string
   type: SubType
@@ -21,14 +22,14 @@ interface Submission {
 }
 
 const SUBMISSIONS: Submission[] = [
-  { id: 'SUB-4421', studentName: 'Juan Santos', studentId: '2023-00142', treeTag: 'TRE-0892', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 09:14', lat: '14.6591', lng: '121.0437', photo: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=200&fit=crop&auto=format', notes: 'Tree is healthy, new growth visible.' },
-  { id: 'SUB-4420', studentName: 'Maria Reyes', studentId: '2023-00387', treeTag: 'TRE-0567', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 08:58', lat: '14.6588', lng: '121.0441', photo: 'https://images.unsplash.com/photo-1503785640985-f62e3aeee448?w=300&h=200&fit=crop&auto=format', incidentType: 'Dead / Uprooted Tree', notes: 'Tree has been uprooted, possibly by recent storm.' },
-  { id: 'SUB-4419', studentName: 'Carlo Diaz', studentId: '2022-10058', treeTag: 'TRE-1204', species: 'Ipil (Intsia bijuga)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 16:31', lat: '14.6594', lng: '121.0429', photo: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=300&h=200&fit=crop&auto=format' },
-  { id: 'SUB-4418', studentName: 'Ana Lim', studentId: '2024-00091', treeTag: 'TRE-0341', species: 'Mahogany (Swietenia macrophylla)', type: 'verification', status: 'approved', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 14:05', lat: '14.6579', lng: '121.0452', photo: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=300&h=200&fit=crop&auto=format' },
-  { id: 'SUB-4417', studentName: 'Ben Cruz', studentId: '2022-00234', treeTag: 'TRE-0783', species: 'Banaba (Lagerstroemia speciosa)', type: 'incident', status: 'declined', event: 'Earth Month Campaign', date: 'Apr 27, 2026 11:22', lat: '14.6601', lng: '121.0415', photo: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300&h=200&fit=crop&auto=format', incidentType: 'Location Mismatch' },
-  { id: 'SUB-4416', studentName: 'Sofia Torres', studentId: '2023-00519', treeTag: 'TRE-1108', species: 'Kamagong (Diospyros blancoi)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 10:44', lat: '14.6585', lng: '121.0460', photo: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=300&h=200&fit=crop&auto=format' },
-  { id: 'SUB-4415', studentName: 'Rico Mendoza', studentId: '2021-00772', treeTag: 'TRE-0223', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Campus Reforestation Q2', date: 'Apr 26, 2026 15:18', lat: '14.6577', lng: '121.0445', photo: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=200&fit=crop&auto=format' },
-  { id: 'SUB-4414', studentName: 'Lena Bautista', studentId: '2023-00816', treeTag: 'TRE-0950', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 26, 2026 09:33', lat: '14.6596', lng: '121.0432', photo: 'https://images.unsplash.com/photo-1503785640985-f62e3aeee448?w=300&h=200&fit=crop&auto=format', incidentType: 'Pest Infestation' },
+  { id: 'SUB-4421', staffName: 'Juan Santos', staffId: 'STF-001', staffType: 'Paid Volunteer', treeTag: 'TRE-0892', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 09:14', lat: '14.6591', lng: '121.0437', photo: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=200&fit=crop&auto=format', notes: 'Tree is healthy, new growth visible.' },
+  { id: 'SUB-4420', staffName: 'Maria Reyes', staffId: 'STF-002', staffType: 'Intern', treeTag: 'TRE-0567', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 08:58', lat: '14.6588', lng: '121.0441', photo: 'https://images.unsplash.com/photo-1503785640985-f62e3aeee448?w=300&h=200&fit=crop&auto=format', incidentType: 'Dead / Uprooted Tree', notes: 'Tree has been uprooted, possibly by recent storm.' },
+  { id: 'SUB-4419', staffName: 'Carlo Diaz', staffId: 'STF-003', staffType: 'Staff', treeTag: 'TRE-1204', species: 'Ipil (Intsia bijuga)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 16:31', lat: '14.6594', lng: '121.0429', photo: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=300&h=200&fit=crop&auto=format' },
+  { id: 'SUB-4418', staffName: 'Ana Lim', staffId: 'STF-004', staffType: 'Paid Volunteer', treeTag: 'TRE-0341', species: 'Mahogany (Swietenia macrophylla)', type: 'verification', status: 'approved', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 14:05', lat: '14.6579', lng: '121.0452', photo: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=300&h=200&fit=crop&auto=format' },
+  { id: 'SUB-4417', staffName: 'Ben Cruz', staffId: 'STF-005', staffType: 'Intern', treeTag: 'TRE-0783', species: 'Banaba (Lagerstroemia speciosa)', type: 'incident', status: 'declined', event: 'Earth Month Campaign', date: 'Apr 27, 2026 11:22', lat: '14.6601', lng: '121.0415', photo: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300&h=200&fit=crop&auto=format', incidentType: 'Location Mismatch' },
+  { id: 'SUB-4416', staffName: 'Sofia Torres', staffId: 'STF-006', staffType: 'Staff', treeTag: 'TRE-1108', species: 'Kamagong (Diospyros blancoi)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 10:44', lat: '14.6585', lng: '121.0460', photo: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=300&h=200&fit=crop&auto=format' },
+  { id: 'SUB-4415', staffName: 'Rico Mendoza', staffId: 'STF-007', staffType: 'Paid Volunteer', treeTag: 'TRE-0223', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Campus Reforestation Q2', date: 'Apr 26, 2026 15:18', lat: '14.6577', lng: '121.0445', photo: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=200&fit=crop&auto=format' },
+  { id: 'SUB-4414', staffName: 'Lena Bautista', staffId: 'STF-008', staffType: 'Intern', treeTag: 'TRE-0950', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 26, 2026 09:33', lat: '14.6596', lng: '121.0432', photo: 'https://images.unsplash.com/photo-1503785640985-f62e3aeee448?w=300&h=200&fit=crop&auto=format', incidentType: 'Pest Infestation' },
 ]
 const statusStyle: Record<SubStatus, string> = {
   pending: 'badge-warning',
@@ -89,7 +90,7 @@ function DeclineModal({ count, onClose, onConfirm }: { count: number; onClose: (
             <textarea
               className="textarea"
               style={{ minHeight: 72 }}
-              placeholder="Add specific feedback for the student(s)..."
+              placeholder="Add specific feedback for the staff member(s)..."
               value={note}
               onChange={e => setNote(e.target.value)}
             />
@@ -124,12 +125,13 @@ function DetailDrawer({ sub, onClose }: { sub: Submission; onClose: () => void }
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
-        {/* Student Info */}
+        {/* Staff Info */}
         <div className="rounded-lg p-3.5" style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)' }}>
-          <div className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Student</div>
+          <div className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Staff</div>
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div><span style={{ color: 'var(--text-muted)' }}>Name: </span><strong>{sub.studentName}</strong></div>
-            <div><span style={{ color: 'var(--text-muted)' }}>ID: </span><span className="mono">{sub.studentId}</span></div>
+            <div><span style={{ color: 'var(--text-muted)' }}>Name: </span><strong>{sub.staffName}</strong></div>
+            <div><span style={{ color: 'var(--text-muted)' }}>ID: </span><span className="mono">{sub.staffId}</span></div>
+            <div><span style={{ color: 'var(--text-muted)' }}>Type: </span><span>{sub.staffType}</span></div>
             <div><span style={{ color: 'var(--text-muted)' }}>Tree Tag: </span><span className="mono">{sub.treeTag}</span></div>
             <div><span style={{ color: 'var(--text-muted)' }}>Species: </span><em>{sub.species}</em></div>
           </div>
@@ -156,7 +158,7 @@ function DetailDrawer({ sub, onClose }: { sub: Submission; onClose: () => void }
         {(sub.notes || sub.incidentType) && (
           <div className="rounded-lg p-3" style={{ background: sub.type === 'incident' ? 'var(--danger-soft)' : 'var(--surface-muted)', border: `1px solid ${sub.type === 'incident' ? 'rgba(220,58,58,0.3)' : 'var(--border)'}` }}>
             <div className="text-xs font-medium mb-1" style={{ color: sub.type === 'incident' ? 'var(--danger)' : 'var(--text-muted)' }}>
-              {sub.type === 'incident' ? 'Incident Report' : 'Student Notes'}
+              {sub.type === 'incident' ? 'Incident Report' : 'Staff Notes'}
             </div>
             {sub.incidentType && <div className="text-xs font-medium mb-1" style={{ color: 'var(--danger)' }}>{sub.incidentType}</div>}
             {sub.notes && <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{sub.notes}</div>}
@@ -192,7 +194,7 @@ export default function SubmissionsView() {
   const filtered = subs.filter(s => {
     if (filter !== 'all' && s.type !== filter) return false
     if (statusFilter !== 'all' && s.status !== statusFilter) return false
-    if (search && ![s.studentName, s.studentId, s.treeTag, s.species].some(v => v.toLowerCase().includes(search.toLowerCase()))) return false
+    if (search && ![s.staffName, s.staffId, s.treeTag, s.species].some(v => v.toLowerCase().includes(search.toLowerCase()))) return false
     return true
   })
 
@@ -250,7 +252,7 @@ export default function SubmissionsView() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-semibold mb-1">Submissions & Verification</h1>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Batch-process student tree planting and incident submissions</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Batch-process staff tree planting and incident submissions</p>
         </div>
         <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
           <span className="mono">{subs.filter(s => s.status === 'pending').length} pending</span>
@@ -268,7 +270,7 @@ export default function SubmissionsView() {
           <input
             className="input text-xs"
             style={{ paddingLeft: 30, background: '#fff' }}
-            placeholder="Search by student name, ID, tree tag, species..."
+            placeholder="Search by staff name, ID, tree tag, species..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -364,7 +366,7 @@ export default function SubmissionsView() {
                 </div>
               </th>
               <th>Submission</th>
-              <th>Student</th>
+              <th>Staff</th>
               <th>Species / Tag</th>
               <th>Event</th>
               <th>Coordinates</th>
@@ -404,8 +406,8 @@ export default function SubmissionsView() {
                     <span className="mono" style={{ color: 'var(--accent-dark)', fontSize: 11 }}>{sub.id}</span>
                   </td>
                   <td>
-                    <div className="font-medium">{sub.studentName}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{sub.studentId}</div>
+                    <div className="font-medium">{sub.staffName}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{sub.staffId} · {sub.staffType}</div>
                   </td>
                   <td>
                     <div className="italic" style={{ fontSize: 11 }}>{sub.species}</div>

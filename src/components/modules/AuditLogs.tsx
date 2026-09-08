@@ -10,8 +10,8 @@ const logs = [
   { id: 'LOG-1038', time: '2026-04-27 16:30:00', admin: 'Admin Rex', adminId: 'ADM-002', action: 'EXPORT', detail: 'Exported verification log (PDF) for Earth Month 2026 — 940 records', count: null, module: 'Reports' },
   { id: 'LOG-1037', time: '2026-04-27 14:05:33', admin: 'Admin Carl', adminId: 'ADM-003', action: 'SINGLE_APPROVE', detail: 'Approved submission SUB-4418 (Ana Lim, TRE-0341)', count: 1, module: 'Submissions' },
   { id: 'LOG-1036', time: '2026-04-27 11:22:17', admin: 'Admin Rex', adminId: 'ADM-002', action: 'SINGLE_DECLINE', detail: 'Declined submission SUB-4417 — Reason: Location Mismatch', count: 1, module: 'Submissions' },
-  { id: 'LOG-1035', time: '2026-04-27 09:00:00', admin: 'Admin Jane', adminId: 'ADM-001', action: 'QUOTA_REASSIGN', detail: 'Bulk quota reassignment — Earth Month Campaign: 5 → 3 trees/student', count: null, module: 'Events' },
-  { id: 'LOG-1034', time: '2026-04-26 17:45:00', admin: 'Admin Jane', adminId: 'ADM-001', action: 'STUDENT_EXEMPT', detail: 'Removed student 2024-00091 (Ana Lim) from Campus Reforestation Q2 — Medical exemption', count: null, module: 'Students' },
+  { id: 'LOG-1035', time: '2026-04-27 09:00:00', admin: 'Admin Jane', adminId: 'ADM-001', action: 'QUOTA_REASSIGN', detail: 'Bulk quota reassignment — Earth Month Campaign: 5 → 3 trees/staff', count: null, module: 'Events' },
+  { id: 'LOG-1034', time: '2026-04-26 17:45:00', admin: 'Admin Jane', adminId: 'ADM-001', action: 'STAFF_EXEMPT', detail: 'Removed staff STF-004 (Ana Lim) from Campus Reforestation Q2 — Medical exemption', count: null, module: 'Staff' },
   { id: 'LOG-1033', time: '2026-04-26 15:10:22', admin: 'Admin Carl', adminId: 'ADM-003', action: 'BATCH_RESUBMIT', detail: 'Requested re-submission for 12 entries — Missing GPS data', count: 12, module: 'Submissions' },
 ]
 
@@ -27,7 +27,7 @@ const actionBadge: Record<string, string> = {
   ALERT_SENT: 'badge-warning',
   EXPORT: 'badge-neutral',
   QUOTA_REASSIGN: 'badge-neutral',
-  STUDENT_EXEMPT: 'badge-neutral',
+  STAFF_EXEMPT: 'badge-neutral',
 }
 function actionLabel(action: string): string {
   return action
@@ -79,7 +79,7 @@ export default function AuditLogs() {
           <option value="all">All Modules</option>
           <option>Submissions</option>
           <option>Events</option>
-          <option>Students</option>
+          <option>Staff</option>
           <option>Reports</option>
           <option>System</option>
         </select>

@@ -4,13 +4,13 @@ import {
 } from 'recharts'
 
 const weeklyVerifications = [
-  { day: 'Mon', approved: 142, declined: 8, incidents: 3 },
-  { day: 'Tue', approved: 198, declined: 12, incidents: 5 },
-  { day: 'Wed', approved: 167, declined: 6, incidents: 2 },
-  { day: 'Thu', approved: 231, declined: 15, incidents: 7 },
-  { day: 'Fri', approved: 189, declined: 9, incidents: 4 },
-  { day: 'Sat', approved: 78, declined: 4, incidents: 1 },
-  { day: 'Sun', approved: 45, declined: 2, incidents: 0 },
+  { day: 'Mon', approved: 14, declined: 8, incidents: 3 },
+  { day: 'Tue', approved: 52, declined: 12, incidents: 5 },
+  { day: 'Wed', approved: 44, declined: 6, incidents: 2 },
+  { day: 'Thu', approved: 61, declined: 15, incidents: 7 },
+  { day: 'Fri', approved: 50, declined: 9, incidents: 4 },
+  { day: 'Sat', approved: 22, declined: 4, incidents: 1 },
+  { day: 'Sun', approved: 14, declined: 2, incidents: 0 },
 ]
 
 const speciesSurvival = [
@@ -30,22 +30,22 @@ const incidentTypes = [
   { name: 'Restricted Area', value: 8, color: '#ec4899' },
 ]
 
-const studentProgress = [
-  { name: 'Juan Santos', id: '2023-00142', dept: 'BS Forestry', verified: 5, quota: 5, rate: 100 },
-  { name: 'Ana Lim', id: '2024-00091', dept: 'BS Biology', verified: 5, quota: 5, rate: 100 },
-  { name: 'Marc Tan', id: '2022-10041', dept: 'BS Agri', verified: 4, quota: 5, rate: 80 },
-  { name: 'Sofia Torres', id: '2023-00519', dept: 'BS Forestry', verified: 4, quota: 5, rate: 80 },
-  { name: 'Carlo Diaz', id: '2022-10058', dept: 'BS Biology', verified: 3, quota: 5, rate: 60 },
-  { name: 'Rico Mendoza', id: '2021-00772', dept: 'BS Agri', verified: 3, quota: 5, rate: 60 },
-  { name: 'Lena Bautista', id: '2023-00816', dept: 'BS Forestry', verified: 2, quota: 5, rate: 40 },
-  { name: 'Kim Garcia', id: '2024-00203', dept: 'BS Biology', verified: 1, quota: 5, rate: 20 },
+const staffProgress = [
+  { name: 'Juan Santos', id: 'STF-001', staffType: 'Paid Volunteer', verified: 5, quota: 5, rate: 100 },
+  { name: 'Ana Lim', id: 'STF-004', staffType: 'Staff', verified: 5, quota: 5, rate: 100 },
+  { name: 'Marc Tan', id: 'STF-002', staffType: 'Intern', verified: 4, quota: 5, rate: 80 },
+  { name: 'Sofia Torres', id: 'STF-006', staffType: 'Paid Volunteer', verified: 4, quota: 5, rate: 80 },
+  { name: 'Carlo Diaz', id: 'STF-003', staffType: 'Staff', verified: 3, quota: 5, rate: 60 },
+  { name: 'Rico Mendoza', id: 'STF-007', staffType: 'Intern', verified: 3, quota: 5, rate: 60 },
+  { name: 'Lena Bautista', id: 'STF-008', staffType: 'Paid Volunteer', verified: 2, quota: 5, rate: 40 },
+  { name: 'Kim Garcia', id: 'STF-009', staffType: 'Staff', verified: 1, quota: 5, rate: 20 },
 ]
 
 const monthlyTrend = [
   { month: 'Jan', verified: 120, incidents: 5 },
   { month: 'Feb', verified: 280, incidents: 12 },
   { month: 'Mar', verified: 680, incidents: 28 },
-  { month: 'Apr', verified: 3812, incidents: 47 },
+  { month: 'Apr', verified: 1680, incidents: 12 },
 ]
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -80,7 +80,7 @@ export default function Analytics() {
       <div className="grid grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Overall Survival Rate', value: '92.4%', sub: 'across 1,940 verified trees', color: 'var(--accent)' },
-          { label: 'Avg. Quota Completion', value: '76.8%', sub: 'per student', color: 'var(--accent-dark)' },
+          { label: 'Avg. Quota Completion', value: '76.8%', sub: 'per staff member', color: 'var(--accent-dark)' },
           { label: 'Incident Rate', value: '2.4%', sub: 'of all submissions', color: 'var(--warning)' },
           { label: 'Batch Efficiency', value: '94.1%', sub: 'batch vs. single approvals', color: 'var(--info)' },
         ].map(k => (
@@ -184,32 +184,32 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Student Progress Tracker */}
+      {/* Staff Progress Tracker */}
       <div className="card">
         <div className="card-header flex items-center justify-between">
-          <h3 className="card-title">Student Quota Progress</h3>
+          <h3 className="card-title">Staff Quota Progress</h3>
           <div className="flex gap-2 text-xs">
             <select className="select text-xs" style={{ width: 'auto' }}>
-              <option>All Departments</option>
-              <option>BS Forestry</option>
-              <option>BS Biology</option>
-              <option>BS Agri</option>
+              <option>All Staff Types</option>
+              <option>Paid Volunteer</option>
+              <option>Staff</option>
+              <option>Intern</option>
             </select>
-            <input className="input text-xs" style={{ width: 150 }} placeholder="Search student..." />
+            <input className="input text-xs" style={{ width: 150 }} placeholder="Search staff..." />
           </div>
         </div>
         <table className="table">
           <thead>
             <tr>
-              <th>Student</th>
-              <th>Department</th>
+              <th>Staff</th>
+              <th>Staff Type</th>
               <th className="num">Progress</th>
               <th style={{ width: 160 }}>Quota Bar</th>
               <th className="num">Rate</th>
             </tr>
           </thead>
           <tbody>
-            {studentProgress.map((s) => {
+            {staffProgress.map((s) => {
               const color = s.rate === 100 ? 'var(--accent)' : s.rate >= 60 ? 'var(--warning)' : 'var(--danger)'
               return (
                 <tr key={s.id}>
@@ -217,7 +217,7 @@ export default function Analytics() {
                     <div className="font-medium">{s.name}</div>
                     <div className="mono" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{s.id}</div>
                   </td>
-                  <td style={{ color: 'var(--text-muted)' }}>{s.dept}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{s.staffType}</td>
                   <td className="num font-medium mono">
                     {s.verified}/{s.quota} trees
                   </td>
@@ -241,7 +241,7 @@ export default function Analytics() {
           </tbody>
         </table>
         <div className="px-4 py-3 border-t text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-          Showing 8 of 1,250 students · <span style={{ color: 'var(--accent-dark)', cursor: 'pointer' }}>Load more →</span>
+          Showing 8 of 45 staff members · <span style={{ color: 'var(--accent-dark)', cursor: 'pointer' }}>Load more →</span>
         </div>
       </div>
     </div>

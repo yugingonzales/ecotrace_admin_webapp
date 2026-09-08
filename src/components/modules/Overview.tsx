@@ -43,9 +43,9 @@ const typeStyle: Record<string, string> = {
 }
 
 const activeEvents = [
-  { name: 'Arbor Day Drive 2026', daysLeft: 8, verified: 3812, target: 6250, students: 1250 },
-  { name: 'Earth Month Campaign', daysLeft: 22, verified: 940, target: 2500, students: 500 },
-  { name: 'Campus Reforestation Q2', daysLeft: 45, verified: 210, target: 1500, students: 300 },
+  { name: 'Arbor Day Drive 2026', daysLeft: 8, verified: 1680, target: 2250, staff: 45 },
+  { name: 'Earth Month Campaign', daysLeft: 22, verified: 420, target: 1000, staff: 20 },
+  { name: 'Campus Reforestation Q2', daysLeft: 45, verified: 95, target: 750, staff: 15 },
 ]
 export default function Overview() {
   return (
@@ -57,8 +57,8 @@ export default function Overview() {
 
       {/* Top Stats */}
       <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <StatCard label="Total Trees Verified" value="4,962" sub="of 10,250 target" delta="12% this week" positive />
-        <StatCard label="Active Students" value="1,830" sub="across 3 events" />
+        <StatCard label="Total Trees Verified" value="2,195" sub="of 4,000 target" delta="12% this week" positive />
+        <StatCard label="Active Staff" value="80" sub="across 3 events" />
         <StatCard label="Pending Submissions" value="47" sub="awaiting review" color="var(--warning)" />
         <StatCard label="Incident Reports" value="12" sub="high-priority: 2" color="var(--danger)" delta="3 new today" positive={false} />
       </div>
@@ -78,7 +78,7 @@ export default function Overview() {
                   <div>
                     <div className="text-sm font-medium">{ev.name}</div>
                     <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      {ev.students.toLocaleString()} students · {ev.daysLeft}d remaining
+                      {ev.staff.toLocaleString()} staff members · {ev.daysLeft}d remaining
                     </div>
                   </div>
                   <div className="text-right">
