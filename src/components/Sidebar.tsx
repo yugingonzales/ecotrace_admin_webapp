@@ -159,7 +159,7 @@ export default function Sidebar({ active, onNavigate, user }: SidebarProps) {
           </div>
           <div>
             <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>{user?.name ?? 'Admin Jane'}</div>
-            <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>Super Admin</div>
+            <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>Administrator</div>
           </div>
         </div>
       </div>

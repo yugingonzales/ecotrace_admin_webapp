@@ -15,7 +15,6 @@ interface LoginProps {
 
 interface AdminAccount extends SessionUser {
   password: string
-  role: string
   createdAt: string
 }
 
@@ -28,7 +27,6 @@ const DEMO_ACCOUNT: AdminAccount = {
   name: 'Admin Jane',
   email: 'admin@school.edu',
   password: 'admin123',
-  role: 'Super Admin',
   createdAt: new Date().toISOString(),
 }
 // --
@@ -54,7 +52,6 @@ export default function Login({ onLogin }: LoginProps) {
   const [middleName, setMiddleName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState('Administrator')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [remember, setRemember] = useState(true)
@@ -62,7 +59,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
-const switchMode = (next: AuthMode) => {
+  const switchMode = (next: AuthMode) => {
     setMode(next)
     setErrors({})
     setNotice('')
@@ -124,7 +121,6 @@ const switchMode = (next: AuthMode) => {
           name: [firstName, middleName, lastName].map(s => s.trim()).filter(Boolean).join(' '),
           email: email.trim(),
           password,
-          role,
           createdAt: new Date().toISOString(),
         }
         saveAccounts([...accounts, account])
@@ -269,18 +265,6 @@ return (
               {errorMark('email')}
             </div>
 
-            {mode === 'signup' && (
-              <div>
-                <label htmlFor="login-role" className="field-label">Administrator role</label>
-                <select id="login-role" value={role} onChange={e => setRole(e.target.value)} className="select">
-                  <option>Super Admin</option>
-                  <option>Administrator</option>
-                  <option>Registrar</option>
-                  <option>Staff</option>
-                </select>
-              </div>
-            )}
-
             <div>
               <label htmlFor="login-password" className="field-label">Password</label>
               <div className="relative">
@@ -333,7 +317,8 @@ return (
                 {errorMark('confirm')}
               </div>
             )}
-{mode === 'signin' && (
+
+            {mode === 'signin' && (
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
                   <input

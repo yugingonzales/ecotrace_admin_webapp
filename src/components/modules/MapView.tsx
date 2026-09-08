@@ -11,7 +11,7 @@ interface TreeMarker {
   treeTag: string
   zone: string
 }
-
+  
 const markers: TreeMarker[] = [
   { id: 'TRE-0892', x: 42, y: 38, status: 'verified', studentName: 'Juan Santos', species: 'Narra', datePlanted: 'Mar 12, 2026', treeTag: 'TRE-0892', zone: 'Zone A' },
   { id: 'TRE-0567', x: 55, y: 45, status: 'incident', studentName: 'Maria Reyes', species: 'Molave', datePlanted: 'Mar 15, 2026', treeTag: 'TRE-0567', zone: 'Zone A' },
