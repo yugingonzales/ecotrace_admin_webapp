@@ -21,8 +21,8 @@ interface AdminAccount extends SessionUser {
 const ACCOUNTS_KEY = 'ecotrace_admin_accounts'
 
 // -- Customize these to match your institution -- 
-const SCHOOL_NAME = 'EcoTrace'
-const SCHOOL_TAGLINE = 'Administrative Portal'
+const SCHOOL_NAME = 'EcoTrace Admin Portal'
+const SCHOOL_TAGLINE = ''
 const DEMO_ACCOUNT: AdminAccount = {
   name: 'Admin Jane',
   email: 'admin@school.edu',

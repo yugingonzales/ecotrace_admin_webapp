@@ -116,10 +116,7 @@ export default function App() {
           </div>
           {/* Branding */}
           <div className="text-center">
-            <div className="font-bold" style={{ color: '#fff', fontSize: 36, letterSpacing: 0.5 }}>EcoTrace</div>
-            <div className="text-sm mt-1.5" style={{ color: 'rgba(255,255,255,0.6)', letterSpacing: 4, textTransform: 'uppercase' }}>
-              Administrative Portal
-            </div>
+            <div className="font-bold" style={{ color: '#fff', fontSize: 32, letterSpacing: 0.5 }}>EcoTrace Admin Portal</div>
           </div>
           {/* Spinner */}
           <div
@@ -172,7 +169,7 @@ export default function App() {
           style={{ background: 'rgba(247,248,250,0.92)', borderBottom: '1px solid var(--border)', backdropFilter: 'blur(8px)' }}
         >
           <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            <span style={{ color: 'var(--accent-dark)', fontWeight: 600 }}>EcoTrace</span>
+            <span style={{ color: 'var(--accent-dark)', fontWeight: 600 }}>EcoTrace Admin Portal</span>
             <span style={{ color: 'var(--text-faint)' }}>/</span>
             <span>{pageTitle}</span>
           </div>

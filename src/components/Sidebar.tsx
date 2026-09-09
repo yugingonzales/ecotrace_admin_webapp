@@ -112,7 +112,7 @@ export default function Sidebar({ active, onNavigate, user }: SidebarProps) {
         </div>
         <div>
           <div className="font-semibold" style={{ color: 'var(--text)', fontSize: 14 }}>
-            EcoTrace
+            EcoTrace Admin Portal
           </div>
           <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>
             Admin
