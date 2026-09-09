@@ -1,13 +1,19 @@
 import * as L from 'leaflet'
 import { useState } from 'react'
 import {
-  MapContainer, TileLayer, Marker, Popup, Polygon, Tooltip, LayersControl, useMapEvents,
+  MapContainer, TileLayer, Marker, Popup, LayersControl, useMapEvents,
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { buildVoronoiZones, type VBounds } from '../../utils/voronoi'
 
 type StatusKey = 'verified' | 'pending' | 'incident' | 'unverified'
 type ZoneName = 'Zone I' | 'Zone II' | 'Zone III'
+
+interface VBounds {
+  minLat: number
+  minLng: number
+  maxLat: number
+  maxLng: number
+}
 
 interface TreeMarker {
   id: string
@@ -29,11 +35,6 @@ interface ZoneInfo {
   color: string
 }
 
-interface ZonePolygon extends ZoneInfo {
-  vertices: [number, number][]
-  centroid: [number, number]
-}
-
 // UEP Catarman, Northern Samar — surveyed planting zones
 const ZONES: ZoneInfo[] = [
   { name: 'Zone I', lat: 12.5096, lng: 124.6674, elev: 6.7, color: '#2f9e6e' },
@@ -48,13 +49,6 @@ const CAMPUS_BOUNDS: VBounds = {
   maxLat: 12.5136,
   maxLng: 124.6682,
 }
-
-// Multi-sided Voronoi cells derived from the three zone sites, clipped to the
-// campus bounds. The union tiles the campus with no overlaps or gaps.
-const ZONE_POLYGONS: ZonePolygon[] = buildVoronoiZones(
-  ZONES.map(z => ({ name: z.name, lat: z.lat, lng: z.lng })),
-  CAMPUS_BOUNDS,
-).map((z, i) => ({ ...ZONES[i], vertices: z.vertices, centroid: z.centroid }))
 
 const markers: TreeMarker[] = [
   // Zone I
@@ -102,22 +96,6 @@ const makeIcon = (color: string, stroke: string, incident: boolean, active: bool
   })
 }
 
-// Editable vertex handle — a small ring with a filled core and grab cursor.
-const makeVertexIcon = (color: string) => {
-  const size = 16
-  return L.divIcon({
-    className: 'ecotrace-vertex',
-    html: `<div style="
-      width:${size}px;height:${size}px;border-radius:50%;
-      background:${color};border:3px solid #ffffff;
-      box-shadow:0 0 0 1.5px ${color},0 1px 5px rgba(0,0,0,0.4);
-      cursor:grab;">
-    </div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  })
-}
-
 // Map-level click handler: clicking empty map space clears the active marker.
 function MapClickHandler({ onBackgroundClick }: { onBackgroundClick: () => void }) {
   useMapEvents({ click: onBackgroundClick })
@@ -128,12 +106,6 @@ export default function MapView() {
   const [activeMarker, setActiveMarker] = useState<TreeMarker | null>(null)
   const [activeLayer, setActiveLayer] = useState<'all' | StatusKey>('all')
   const [zoneFilter, setZoneFilter] = useState<'all' | ZoneName>('all')
-  const [editing, setEditing] = useState(false)
-  // Editable copies of the Voronoi cell vertices. When not editing, these mirror
-  // the computed cells; dragging a handle updates the relevant zone's vertex.
-  const [zoneVertices, setZoneVertices] = useState<Record<ZoneName, [number, number][]>>(
-    () => Object.fromEntries(ZONE_POLYGONS.map(z => [z.name, z.vertices])) as Record<ZoneName, [number, number][]>,
-  )
 
   const zoneFiltered = zoneFilter === 'all' ? markers : markers.filter(m => m.zone === zoneFilter)
   const visibleMarkers = activeLayer === 'all' ? zoneFiltered : zoneFiltered.filter(m => m.status === activeLayer)
@@ -152,26 +124,6 @@ export default function MapView() {
     verified: markers.filter(m => m.zone === z.name && m.status === 'verified').length,
     incidents: markers.filter(m => m.zone === z.name && m.status === 'incident').length,
   }))
-
-  // Start editing: begin from the current (possibly already-edited) vertices.
-  const startEditing = () => setEditing(true)
-  // Stop editing: keep edits applied to zoneVertices, just hide the handles.
-  const stopEditing = () => setEditing(false)
-  const resetBoundaries = () => {
-    setZoneVertices(Object.fromEntries(ZONE_POLYGONS.map(z => [z.name, z.vertices])) as Record<ZoneName, [number, number][]>)
-  }
-
-  const moveVertex = (zone: ZoneName, index: number, newPos: [number, number]) => {
-    setZoneVertices(prev => {
-      const next = { ...prev }
-      const verts = next[zone].slice()
-      verts[index] = newPos
-      // Keep the polygon closed/ordered by clamping the dragged vertex within the
-      // campus bounds and ensuring neighbours stay reasonably separated.
-      next[zone] = verts
-      return next
-    })
-  }
 
   return (
     <div>
@@ -199,29 +151,6 @@ export default function MapView() {
               <option key={z.name} value={z.name}>{z.name} — {z.elev} m</option>
             ))}
           </select>
-          {editing ? (
-            <>
-              <button
-                className="btn btn-sm btn-primary"
-                onClick={resetBoundaries}
-                title="Reset to computed Voronoi cell borders"
-              >
-                Reset Borders
-              </button>
-              <button className="btn btn-sm" onClick={stopEditing}>
-                Done ✓
-              </button>
-            </>
-          ) : (
-            <button
-              className="btn btn-sm"
-              style={{ background: 'var(--surface-muted)' }}
-              onClick={startEditing}
-              title="Edit zone boundary vertices"
-            >
-              ✎ Edit Borders
-            </button>
-          )}
         </div>
       </div>
 
@@ -252,52 +181,6 @@ export default function MapView() {
                 />
               </LayersControl.BaseLayer>
             </LayersControl>
-
-            {/* Zone overlays — Voronoi tessellation of the UEP campus */}
-            {ZONE_POLYGONS.map(z => (
-              <Polygon
-                key={z.name}
-                positions={zoneVertices[z.name]}
-                pathOptions={{
-                  color: z.color,
-                  weight: 1.5,
-                  dashArray: editing ? '' : '6 4',
-                  fillColor: z.color,
-                  fillOpacity: 0.08,
-                }}
-                eventHandlers={{ click: () => setActiveMarker(null) }}
-              >
-                <Tooltip permanent direction="center" className="zone-label" opacity={1}>
-                  <div style={{ textAlign: 'center', color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
-                    <div style={{ fontWeight: 600 }}>{z.name}</div>
-                    <div style={{ fontSize: 10 }}>{z.elev} m elev</div>
-                  </div>
-                </Tooltip>
-              </Polygon>
-            ))}
-
-            {/* Vertex edit handles (drag to reshape zone borders) */}
-            {editing &&
-              ZONE_POLYGONS.map(z => (
-                <div key={`${z.name}-handles`}>
-                  {zoneVertices[z.name].map((v, idx) => (
-                    <Marker
-                      key={`${z.name}-v${idx}`}
-                      position={v}
-                      draggable
-                      zIndexOffset={600}
-                      icon={makeVertexIcon(z.color)}
-                      eventHandlers={{
-                        dragend: e => {
-                          const ll = (e.target as L.Marker).getLatLng()
-                          moveVertex(z.name, idx, [ll.lat, ll.lng])
-                        },
-                        click: e => L.DomEvent.stopPropagation(e.originalEvent),
-                      }}
-                    />
-                  ))}
-                </div>
-              ))}
 
             {/* Tree markers */}
             {visibleMarkers.map(m => {

@@ -265,21 +265,6 @@ h1, h2, h3, h4, h5 {
   border: none;
 }
 
-.ecotrace-vertex {
-  background: transparent;
-  border: none;
-}
-.ecotrace-vertex:hover div {
-  cursor: grab;
-}
-
-.zone-label {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  text-align: center;
-}
-
 .map-card .leaflet-container {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
