@@ -220,6 +220,7 @@ export default function EventBoundaryEditor({
   onClose,
 }: Props) {
   const editing = expanded
+  const [hintDismissed, setHintDismissed] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
   const bounds = zoneLabel
     ? framingBounds(ZONE_LABEL_TO_NAME[zoneLabel] ?? '')
@@ -243,7 +244,7 @@ export default function EventBoundaryEditor({
     onChange(boundary.filter((_, j) => j !== i))
   }
   const undo = () => { if (boundary.length > 0) onChange(boundary.slice(0, -1)) }
-  const clear = () => onChange([])
+  const clear = () => { setHintDismissed(false); onChange([]) }
 
   const map = (
     <MapContainer
@@ -312,9 +313,18 @@ export default function EventBoundaryEditor({
 
           <div className="cc-map-body cc-draw-mode relative">
             {map}
-            {boundary.length === 0 && (
+            {boundary.length === 0 && !hintDismissed && (
               <div className="cc-boundary-hint">
                 <div>
+                  <button
+                    type="button"
+                    className="cc-boundary-hint-close"
+                    title="Dismiss hint"
+                    aria-label="Dismiss hint"
+                    onClick={() => setHintDismissed(true)}
+                  >
+                    ✕
+                  </button>
                   <strong>Click the map to draw the boundary</strong>
                   <br />
                   <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>

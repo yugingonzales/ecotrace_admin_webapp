@@ -362,13 +362,15 @@ h1, h2, h3, h4, h5 {
 
 .cc-boundary-hint {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 12px;                 /* pin to the top edge instead of the center */
   z-index: 1000;
-  pointer-events: none;
+  pointer-events: none;      /* map stays clickable around the card */
   display: flex;
-  align-items: center;
+  align-items: flex-start;   /* top-aligned */
   justify-content: center;
-  padding: 16px;
+  padding: 0 16px;
 }
 
 .cc-boundary-hint > div {
@@ -381,12 +383,38 @@ h1, h2, h3, h4, h5 {
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 6px 20px rgba(16, 24, 40, 0.15);
+  pointer-events: auto;      /* make the card (and its ✕) clickable */
+  position: relative;
+}
+
+.cc-boundary-hint-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cc-boundary-hint-close:hover {
+  background: var(--surface-muted);
+  color: var(--text);
 }
 
 .map-expand-btn {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   z-index: 500;
   display: inline-flex;
   align-items: center;
@@ -407,4 +435,11 @@ h1, h2, h3, h4, h5 {
 .map-expand-btn:hover {
   background: #fff;
   box-shadow: 0 4px 12px rgba(16, 24, 40, 0.18);
+}
+
+/* Center the zoom (+/−) controls vertically on the left side of the mini map,
+   so they don't overlap the "Edit boundary" button at top-left. */
+.cc-event-map .leaflet-top.leaflet-left {
+  top: 50%;
+  transform: translateY(-50%);
 }

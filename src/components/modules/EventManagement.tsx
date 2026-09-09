@@ -84,7 +84,7 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     metrics: [] as string[],
   })
 
-  const metricOptions = ['GPS Coordinates', 'Status Photo', 'Tree Height (cm)', 'DBH Measurement', 'Species Confirmation', 'Survival Status']
+  const metricOptions = ['GPS Coordinates', 'Status Photo', 'Tree Height (cm)', 'Growth Stage', 'Diameter Measurement (cm)', 'Species Confirmation', 'Survival Status']
 
   const toggleMetric = (m: string) => {
     setForm(f => ({
