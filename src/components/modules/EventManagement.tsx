@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import EventBoundaryEditor from '../map/EventBoundaryEditor'
+import type { Boundary } from '../../lib/site'
 
 const events = [
   {
@@ -77,6 +79,7 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     start: '',
     end: '',
     zone: '',
+    boundary: [] as Boundary,
     guidelines: '',
     metrics: [] as string[],
   })
@@ -92,6 +95,8 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
 
   const estStaff = form.year === '2025–2026' ? 45 : form.year === '2024–2025' ? 35 : 0
   const estTarget = estStaff * Number(form.quota || 0)
+
+  const [mapExpanded, setMapExpanded] = useState(false)
 
   return (
     <div className="overlay">
@@ -189,23 +194,33 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
               />
             </div>
 <div className="col-span-2">
-              <label className="field-label">Target Location / Zone</label>
-              <div className="rounded-lg border flex items-end justify-end" style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)', height: 120, padding: 10, position: 'relative' }}>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Zone Boundary Selector</div>
-                  <div className="text-xs" style={{ color: 'var(--text-faint)' }}>Click to draw geofence boundary</div>
-                </div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="field-label mb-0">Event Field Boundary / Zone</label>
                 <select
-                  className="select relative"
+                  className="select"
                   style={{ width: 'auto', padding: '5px 10px', fontSize: 11 }}
                   value={form.zone}
                   onChange={e => setForm(f => ({ ...f, zone: e.target.value }))}
                 >
-                  <option value="">Select preset zone...</option>
+                  <option value="">Full campus map</option>
                   <option>Zone A – Main Campus</option>
                   <option>Zone B – Annex Field</option>
                   <option>Zone C – Hillside Reserve</option>
                 </select>
+              </div>
+
+              <EventBoundaryEditor
+                zoneLabel={form.zone}
+                boundary={form.boundary}
+                onChange={b => setForm(f => ({ ...f, boundary: b }))}
+                height={250}
+                expanded={mapExpanded}
+                onExpand={() => setMapExpanded(true)}
+                onClose={() => setMapExpanded(false)}
+              />
+
+              <div className="mt-2" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                Boundary defines the area where staff verifications are accepted — draw at least 3 points to close it.
               </div>
             </div>
 

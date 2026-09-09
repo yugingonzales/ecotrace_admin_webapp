@@ -4,16 +4,9 @@ import {
   MapContainer, TileLayer, Marker, Popup, LayersControl, useMapEvents,
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
+import { ZONES, MAP_CENTER, CAMPUS_BOUNDS, type ZoneName } from '../../lib/site'
 
 type StatusKey = 'verified' | 'pending' | 'incident' | 'unverified'
-type ZoneName = 'Zone I' | 'Zone II' | 'Zone III'
-
-interface VBounds {
-  minLat: number
-  minLng: number
-  maxLat: number
-  maxLng: number
-}
 
 interface TreeMarker {
   id: string
@@ -25,29 +18,6 @@ interface TreeMarker {
   datePlanted: string
   treeTag: string
   zone: ZoneName
-}
-
-interface ZoneInfo {
-  name: ZoneName
-  lat: number
-  lng: number
-  elev: number
-  color: string
-}
-
-// UEP Catarman, Northern Samar — surveyed planting zones
-const ZONES: ZoneInfo[] = [
-  { name: 'Zone I', lat: 12.5096, lng: 124.6674, elev: 6.7, color: '#2f9e6e' },
-  { name: 'Zone II', lat: 12.5131, lng: 124.6613, elev: 6.3, color: '#2f6fb6' },
-  { name: 'Zone III', lat: 12.5103, lng: 124.6609, elev: 8.3, color: '#d9902b' },
-]
-
-const MAP_CENTER: [number, number] = [12.5113, 124.6641]
-const CAMPUS_BOUNDS: VBounds = {
-  minLat: 12.509,
-  minLng: 124.6604,
-  maxLat: 12.5136,
-  maxLng: 124.6682,
 }
 
 const markers: TreeMarker[] = [
