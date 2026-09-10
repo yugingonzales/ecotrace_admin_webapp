@@ -5,41 +5,7 @@ import {
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { ZONES, MAP_CENTER, CAMPUS_BOUNDS, type ZoneName } from '../../lib/site'
-
-type StatusKey = 'verified' | 'pending' | 'incident' | 'unverified'
-
-interface TreeMarker {
-  id: string
-  lat: number
-  lng: number
-  status: StatusKey
-  staffName: string
-  species: string
-  datePlanted: string
-  treeTag: string
-  zone: ZoneName
-}
-
-const markers: TreeMarker[] = [
-  // Zone I
-  { id: 'TRE-0892', lat: 12.5101, lng: 124.6679, status: 'verified', staffName: 'Juan Santos', species: 'Narra', datePlanted: 'Mar 12, 2026', treeTag: 'TRE-0892', zone: 'Zone I' },
-  { id: 'TRE-0567', lat: 12.5098, lng: 124.6681, status: 'incident', staffName: 'Maria Reyes', species: 'Molave', datePlanted: 'Mar 15, 2026', treeTag: 'TRE-0567', zone: 'Zone I' },
-  { id: 'TRE-1204', lat: 12.5092, lng: 124.6677, status: 'pending', staffName: 'Carlo Diaz', species: 'Ipil', datePlanted: 'Mar 18, 2026', treeTag: 'TRE-1204', zone: 'Zone I' },
-  { id: 'TRE-0341', lat: 12.51, lng: 124.6671, status: 'verified', staffName: 'Ana Lim', species: 'Mahogany', datePlanted: 'Mar 20, 2026', treeTag: 'TRE-0341', zone: 'Zone I' },
-  { id: 'TRE-1108', lat: 12.5094, lng: 124.6671, status: 'pending', staffName: 'Sofia Torres', species: 'Kamagong', datePlanted: 'Mar 25, 2026', treeTag: 'TRE-1108', zone: 'Zone I' },
-  { id: 'TRE-0223', lat: 12.5105, lng: 124.6676, status: 'verified', staffName: 'Rico Mendoza', species: 'Narra', datePlanted: 'Mar 28, 2026', treeTag: 'TRE-0223', zone: 'Zone I' },
-  { id: 'TRE-0412', lat: 12.5094, lng: 124.6679, status: 'verified', staffName: 'Marc Tan', species: 'Ipil', datePlanted: 'Apr 3, 2026', treeTag: 'TRE-0412', zone: 'Zone I' },
-  // Zone II
-  { id: 'TRE-0783', lat: 12.5135, lng: 124.6616, status: 'incident', staffName: 'Ben Cruz', species: 'Banaba', datePlanted: 'Mar 22, 2026', treeTag: 'TRE-0783', zone: 'Zone II' },
-  { id: 'TRE-0950', lat: 12.5128, lng: 124.6617, status: 'incident', staffName: 'Lena Bautista', species: 'Molave', datePlanted: 'Apr 1, 2026', treeTag: 'TRE-0950', zone: 'Zone II' },
-  { id: 'TRE-1056', lat: 12.5134, lng: 124.661, status: 'unverified', staffName: 'Donna Uy', species: 'Narra', datePlanted: 'Apr 5, 2026', treeTag: 'TRE-1056', zone: 'Zone II' },
-  { id: 'TRE-0834', lat: 12.5129, lng: 124.6612, status: 'pending', staffName: 'Chris Ramos', species: 'Narra', datePlanted: 'Apr 11, 2026', treeTag: 'TRE-0834', zone: 'Zone II' },
-  // Zone III
-  { id: 'TRE-0678', lat: 12.5099, lng: 124.6612, status: 'unverified', staffName: 'Kai Lopez', species: 'Mahogany', datePlanted: 'Apr 7, 2026', treeTag: 'TRE-0678', zone: 'Zone III' },
-  { id: 'TRE-0199', lat: 12.5107, lng: 124.6612, status: 'verified', staffName: 'Jess Flores', species: 'Banaba', datePlanted: 'Apr 9, 2026', treeTag: 'TRE-0199', zone: 'Zone III' },
-  { id: 'TRE-0455', lat: 12.5104, lng: 124.6605, status: 'verified', staffName: 'Pat Soriano', species: 'Kamagong', datePlanted: 'Apr 13, 2026', treeTag: 'TRE-0455', zone: 'Zone III' },
-  { id: 'TRE-1320', lat: 12.51, lng: 124.6608, status: 'pending', staffName: 'Kim Garcia', species: 'Ipil', datePlanted: 'Apr 15, 2026', treeTag: 'TRE-1320', zone: 'Zone III' },
-]
+import { trees as markers, type TreeMarker, type StatusKey } from '../../lib/trees'
 
 const statusConfig: Record<StatusKey, { color: string; label: string; stroke: string }> = {
   verified: { color: '#2f9e6e', label: 'Verified & Healthy', stroke: '#237a54' },

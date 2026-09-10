@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import EventBoundaryEditor from '../map/EventBoundaryEditor'
 import type { Boundary } from '../../lib/site'
+import { treesEligibleForVerification } from '../../lib/trees'
 
 const events = [
   {
@@ -74,7 +75,8 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    year: '2025–2026',
+    plantFrom: '',
+    plantTo: '',
     quota: '50',
     start: '',
     end: '',
@@ -93,8 +95,10 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     }))
   }
 
-  const estStaff = form.year === '2025–2026' ? 45 : form.year === '2024–2025' ? 35 : 0
-  const estTarget = estStaff * Number(form.quota || 0)
+  const eligibleTrees = useMemo(
+    () => treesEligibleForVerification(form.boundary, form.plantFrom, form.plantTo),
+    [form.boundary, form.plantFrom, form.plantTo],
+  )
 
   const [mapExpanded, setMapExpanded] = useState(false)
 
@@ -110,18 +114,20 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="modal-body space-y-5">
-          {/* Staff Cohort Indicator */}
-          {estStaff > 0 && (
+          {/* Eligible Trees Indicator */}
+          {form.plantFrom && form.plantTo && (
             <div className="flex items-start gap-3 p-3 rounded-lg" style={{ background: 'var(--accent-soft)', border: '1px solid rgba(47,158,110,0.3)' }}>
               <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 mt-0.5 flex-shrink-0" stroke="var(--accent-dark)" strokeWidth="1.5">
                 <circle cx="8" cy="8" r="7" />
                 <path d="M5.5 8.5l2 2 3-3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <div className="text-xs" style={{ color: 'var(--accent-dark)' }}>
-                <strong>{estStaff.toLocaleString()} active staff</strong> in S.Y. {form.year} will be automatically assigned.
-                {estTarget > 0 && (
-                  <> Total target: <strong>{estTarget.toLocaleString()} trees</strong> ({form.quota} × {estStaff.toLocaleString()}).</>
-                )}
+                <strong>{eligibleTrees.length} existing tree{eligibleTrees.length !== 1 ? 's' : ''}</strong> planted between{' '}
+                {new Date(form.plantFrom + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} –{' '}
+                {new Date(form.plantTo + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                {form.boundary.length >= 3
+                  ? ' inside the drawn boundary are eligible for verification.'
+                  : ' are within the selected period. Draw a boundary to narrow results.'}
               </div>
             </div>
           )}
@@ -147,16 +153,27 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
             </div>
 
             <div>
-              <label className="field-label">Academic Year Target *</label>
-              <select
-                className="select"
-                value={form.year}
-                onChange={e => setForm(f => ({ ...f, year: e.target.value }))}
-              >
-                <option>2025–2026</option>
-                <option>2024–2025</option>
-                <option>2026–2027</option>
-              </select>
+              <label className="field-label">Tree Planting Period *</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="field-label" style={{ fontSize: 10, color: 'var(--text-muted)' }}>Planted From</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={form.plantFrom}
+                    onChange={e => setForm(f => ({ ...f, plantFrom: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="field-label" style={{ fontSize: 10, color: 'var(--text-muted)' }}>Planted To</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={form.plantTo}
+                    onChange={e => setForm(f => ({ ...f, plantTo: e.target.value }))}
+                  />
+                </div>
+              </div>
             </div>
 
             <div>
@@ -222,6 +239,51 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
               <div className="mt-2" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
                 Boundary defines the area where staff verifications are accepted — draw at least 3 points to close it.
               </div>
+{/* Eligible Trees Preview */}
+              {form.plantFrom && form.plantTo && (
+                <div className="mt-3 rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+                  <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                    <span className="text-xs font-medium">
+                      Trees to verify ({eligibleTrees.length})
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      inside boundary · planted in period
+                    </span>
+                  </div>
+                  {eligibleTrees.length === 0 ? (
+                    <div className="px-3 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      No trees match the current boundary and planting period.
+                      {form.boundary.length < 3 && ' Draw at least 3 boundary points to filter.'}
+                    </div>
+                  ) : (
+                    <div className="max-h-36 overflow-y-auto px-1 py-1">
+                      {eligibleTrees.map(t => (
+                        <div
+                          key={t.id}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded text-xs"
+                        >
+                          <span
+                            className="inline-block rounded-full flex-shrink-0"
+                            style={{
+                              width: 8,
+                              height: 8,
+                              background:
+                                t.status === 'verified' ? 'var(--accent)'
+                                  : t.status === 'pending' ? 'var(--warning)'
+                                    : t.status === 'incident' ? 'var(--danger)'
+                                      : 'var(--text-faint)',
+                            }}
+                          />
+                          <span className="mono font-medium">{t.treeTag}</span>
+                          <span className="italic flex-1 truncate">{t.species}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>{t.datePlanted}</span>
+                          <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{t.zone}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="col-span-2">

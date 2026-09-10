@@ -54,6 +54,23 @@ export function boundaryArea(boundary: Boundary): number {
   return degArea * mPerDeg * mPerDeg * lngScale
 }
 
+/** Ray-casting point-in-polygon test — returns true if (lat, lng) is inside the boundary ring. */
+export function pointInBoundary(boundary: Boundary, lat: number, lng: number): boolean {
+  if (boundary.length < 3) return false
+  let inside = false
+  for (let i = 0, j = boundary.length - 1; i < boundary.length; j = i++) {
+    const [yi, xi] = boundary[i]
+    const [yj, xj] = boundary[j]
+    if (
+      ((xi > lng) !== (xj > lng)) &&
+      (lat < ((yj - yi) * (lng - xi)) / (xj - xi) + yi)
+    ) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
 /** Bounding box that frames a single zone on the map. */
 export function framingBounds(zoneName: string): VBounds {
   const zone = ZONES.find(z => zoneName.includes(z.name) || z.name === zoneName)
