@@ -10,11 +10,40 @@ import AuditLogs from './components/modules/AuditLogs'
 
 type Module = 'overview' | 'events' | 'submissions' | 'map' | 'analytics' | 'logs'
 
-interface Toast {
+interface Notification {
   id: number
   msg: string
   type: 'info' | 'warning' | 'error'
+  time: number
+  read: boolean
 }
+
+// Sample notification history — exact ordering is decided at render (newest first)
+const SEED_NOTIFICATIONS: Notification[] = [
+  {
+    id: 1,
+    msg: '2 new incident reports submitted in the last hour',
+    type: 'warning',
+    time: Date.now() - 1000 * 60 * 45,
+    read: true,
+  },
+  {
+    id: 2,
+    msg: 'New submission approved: Tree planting initiative (Zone A)',
+    type: 'info',
+    time: Date.now() - 1000 * 60 * 60 * 2,
+    read: true,
+  },
+  {
+    id: 3,
+    msg: 'Scheduled maintenance for the web map this Friday from 10:00 PM to 11:00 PM',
+    type: 'info',
+    time: Date.now() - 1000 * 60 * 60 * 24,
+    read: true,
+  },
+]
+
+let notifSeq = SEED_NOTIFICATIONS.length
 
 const SIDEBAR_WIDTH = 220
 
@@ -40,12 +69,25 @@ function getInitials(name: string): string {
   )
 }
 
+function timeAgo(ts: number): string {
+  const sec = Math.floor((Date.now() - ts) / 1000)
+  if (sec < 60) return 'just now'
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const day = Math.floor(hr / 24)
+  if (day < 7) return `${day}d ago`
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 import uepLogo from './assets/uep_logo.jpg'
 import collegeBg from './assets/college_of_science.jpg'
 
 export default function App() {
   const [active, setActive] = useState<Module>('overview')
-  const [toasts, setToasts] = useState<Toast[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>(SEED_NOTIFICATIONS)
+  const [notifOpen, setNotifOpen] = useState(false)
   const [user, setUser] = useState<SessionUser | null>(readSession)
   const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -55,20 +97,21 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [])
 
+  const pushNotification = (msg: string, type: Notification['type'] = 'info') => {
+    setNotifications(prev => [...prev, { id: ++notifSeq, msg, type, time: Date.now(), read: false }])
+  }
+
   // Simulate a high-priority incident notification after signing in
   useEffect(() => {
     if (!user) return
     const timer = setTimeout(() => {
-      addToast('High-priority incident report received: Destroyed planting area (Zone B, TRE-0567) — submitted by M. Reyes', 'error')
+      pushNotification(
+        'High-priority incident report received: Destroyed planting area (Zone B, TRE-0567) — submitted by M. Reyes',
+        'error',
+      )
     }, 2000)
     return () => clearTimeout(timer)
   }, [user])
-
-  const addToast = (msg: string, type: Toast['type'] = 'info') => {
-    const id = Date.now()
-    setToasts(prev => [...prev, { id, msg, type }])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
-  }
 
   const handleLogin = (u: SessionUser, remember: boolean) => {
     ;(remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(u))
@@ -154,8 +197,15 @@ export default function App() {
     logs: 'Audit Logs',
   }[active]
 
-  const toastTone = (type: Toast['type']) =>
+  const notifTone = (type: Notification['type']) =>
     type === 'error' ? 'badge-danger' : type === 'warning' ? 'badge-warning' : 'badge-accent'
+
+  const sortedNotifications = [...notifications].sort((a, b) => b.time - a.time)
+  const unreadCount = notifications.filter(n => !n.read).length
+
+  const markAllRead = () => setNotifications(prev => prev.map(n => (n.read ? n : { ...n, read: true })))
+  const markRead = (id: number) =>
+    setNotifications(prev => prev.map(n => (n.id === id && !n.read ? { ...n, read: true } : n)))
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', fontFamily: 'Inter, sans-serif' }}>
@@ -182,17 +232,94 @@ export default function App() {
             </div>
 
             {/* Notification bell */}
-            <button
-              className="relative p-2 rounded-md btn"
-              style={{ padding: 6 }}
-              onClick={() => addToast('2 new incident reports submitted in the last hour', 'warning')}
-            >
-              <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
-                <path d="M8 1a5 5 0 015 5v3l1.5 2H1.5L3 9V6a5 5 0 015-5z" />
-                <path d="M6.5 13a1.5 1.5 0 003 0" />
-              </svg>
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ background: 'var(--danger)' }} />
-            </button>
+            <div className="relative">
+              <button
+                className="relative p-2 rounded-md btn"
+                style={{ padding: 6 }}
+                onClick={() => setNotifOpen(v => !v)}
+                title="Notifications"
+                aria-label="Notifications"
+              >
+                <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M8 1a5 5 0 015 5v3l1.5 2H1.5L3 9V6a5 5 0 015-5z" />
+                  <path d="M6.5 13a1.5 1.5 0 003 0" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                    style={{ minWidth: 16, height: 16, padding: '0 4px', background: 'var(--danger)' }}
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                  <div
+                    className="absolute right-0 top-10 z-50 w-80 rounded-lg card"
+                    style={{ boxShadow: '0 12px 32px rgba(16,24,40,0.14)' }}
+                  >
+                    <div
+                      className="flex items-center justify-between px-4 py-3 border-b"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
+                      <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>
+                        Notifications
+                        {unreadCount > 0 && <span className="ml-1.5 badge badge-danger">{unreadCount} new</span>}
+                      </div>
+                      <button
+                        className="text-xs font-medium disabled:opacity-50"
+                        style={{ color: 'var(--accent-dark)' }}
+                        onClick={markAllRead}
+                        disabled={unreadCount === 0}
+                      >
+                        Mark all read
+                      </button>
+                    </div>
+
+                    <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                      {sortedNotifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-xs" style={{ color: 'var(--text-faint)' }}>
+                          No notifications yet
+                        </div>
+                      ) : (
+                        sortedNotifications.map(n => (
+                          <button
+                            key={n.id}
+                            onClick={() => markRead(n.id)}
+                            className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-gray-50"
+                            style={{
+                              background: n.read ? '#fff' : 'var(--accent-soft)',
+                              borderBottom: '1px solid var(--border)',
+                            }}
+                          >
+                            <span className={`badge mt-0.5 ${notifTone(n.type)}`}>
+                              {n.type === 'error' ? '⚠' : n.type === 'warning' ? '!' : 'i'}
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-xs leading-snug" style={{ color: 'var(--text)' }}>
+                                {n.msg}
+                              </span>
+                              <span className="block mt-0.5 text-[11px]" style={{ color: 'var(--text-faint)' }}>
+                                {timeAgo(n.time)}
+                              </span>
+                            </span>
+                            {!n.read && (
+                              <span
+                                className="mt-1.5 w-2 h-2 rounded-full shrink-0"
+                                style={{ background: 'var(--accent)' }}
+                              />
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Export shortcut */}
             <button className="btn btn-sm">Export ↓</button>
@@ -243,31 +370,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Toast notifications */}
-      <div className="fixed top-16 right-4 z-50 flex flex-col gap-2" style={{ maxWidth: 380 }}>
-        {toasts.map(toast => (
-          <div
-            key={toast.id}
-            className="flex items-start gap-3 px-4 py-3 rounded-lg text-xs"
-            style={{ background: '#fff', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(16,24,40,0.12)', animation: 'slideIn 0.2s ease' }}
-          >
-            <span className={`badge ${toastTone(toast.type)}`}>
-              {toast.type === 'error' ? '⚠' : toast.type === 'warning' ? '!' : 'i'}
-            </span>
-            <span className="flex-1 leading-snug" style={{ color: 'var(--text)' }}>{toast.msg}</span>
-            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} style={{ color: 'var(--text-faint)', flexShrink: 0 }}>
-              ✕
-            </button>
-          </div>
-        ))}
       </div>
-
-      <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(16px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
-    </div>
   )
 }
