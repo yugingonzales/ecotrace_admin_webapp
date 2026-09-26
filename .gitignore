@@ -3,6 +3,10 @@ dist/
 build/
 .cache/
 .env*
+# ...but the template is documentation and must be shared, or a fresh clone
+# has no idea which VITE_* keys exist. The rule above is `.env*`, not `.env`,
+# so it swallows `.env.example` too.
+!.env.example
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo

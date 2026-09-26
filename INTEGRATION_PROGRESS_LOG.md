@@ -3,7 +3,9 @@
 **Scope:** `ecotrace_admin` (React) · Flutter mobile app · MariaDB `ecotrace_db`
 **Audit date:** 2026-09-26
 **Pass:** Option A — findings documentation, coordinate bug fix, inert typed API scaffold
-**Latest pass:** Clickable notifications + live "Needs attention" block (see §10)
+**Latest pass:** TypeScript → JavaScript (JSDoc) migration, TypeScript removed
+entirely (see §11). Before that: clickable notifications + live "Needs
+attention" block (§10)
 **Status:** A **read-only** Node/MariaDB REST API exists (`server/`, Express-free, on
 :3000) and `MapView` reads from it via `GET /api/plants`. It is read-only **by
 design** — there is no write path, so approvals, declines and event edits are
@@ -257,10 +259,10 @@ step, or the mock IDs should be retired in favour of numeric IDs.
 | `src/components/modules/SubmissionsView.tsx` | edited | Coordinate bug fix (§5) |
 | `vite.config.ts` | edited | `/api` → `localhost:3000` proxy |
 
-*Historical. The figure below is from that pass; the current bundle is 855.6 kB /
-247.0 kB gzipped after the client-store work.*
+*Historical. The figure below is from that pass. §11.5 holds the current bundle
+size; the summary at the end of the change log repeats it.*
 
-**Verification:** `npx tsc --noEmit` exits 0; `npx vite build` succeeds
+**Verification (at the time):** `npx tsc --noEmit` exits 0; `npx vite build` succeeds
 (833 kB bundle / 240 kB gzipped, chunk-size warning only).
 
 ### 7.1 Why the API client is inert
@@ -570,12 +572,14 @@ visual behaviour remain manual.
 | 2026-09-26 | Made every notification row clickable, with chevron + tooltip | `src/App.tsx` |
 | 2026-09-26 | Routed focus into the submissions drawer / filters | `src/components/modules/SubmissionsView.tsx` |
 | 2026-09-26 | Added notification-target + deep-link tests (14) | `src/lib/store.test.ts`, `src/lib/notificationTargets.test.tsx` |
+| 2026-09-26 | Un-ignored `.env.example` — the template had never been committed | `.gitignore` |
 | 2026-09-26 | TS→JS migration **complete**: all 28 `src/` files converted to JSDoc, TypeScript removed entirely (no `.ts`/`.tsx` in the repo), 3 hardcoded-extension readers made extension-agnostic | §11 |
 
 
-**Verification:** `npx tsc --noEmit` → exit 0. `npx vite build` → success
-(859.42 kB / 247.96 kB gzipped; pre-existing chunk-size warning only).
-`npx vitest run` → 58/58. `server/ npm test` → 13/13.
+**Verification:** `npx vite build` → success (859.49 kB / 248.00 kB gzipped;
+pre-existing chunk-size warning only). `npx vitest run` → 58/58.
+`server/ npm test` → 13/13. `npm run verify` runs the last two together.
+There is no longer a typecheck step — see §11.7.
 
 **Tests were mutation-checked, not merely observed green.** Three deliberate
 breakages were introduced and reverted after confirming the suite caught each
@@ -588,10 +592,19 @@ neutering `withTarget()` → `expected undefined to deeply equal { module:
 tree health; dead-tree/EcoTag reconciliation is deferred. A real `planter_name`
 column should exist before this ships to production.*
 
-*Still unconfirmed / unverified, carried forward:* the **publish-requires-metrics**
-behaviour change is awaiting a yes/no; the **map notification-bleed** report is
-unverified (`.cc-event-map` has since been isolated — hard-reload first in case
-Vite HMR cached the sheet). See §10.3 for the two one-word flips on this pass.
+*Both items previously carried forward as unconfirmed are now resolved, and
+neither needed a decision:*
+
+- **publish-requires-metrics was never a change.** The guard in
+  `EventManagement` is byte-identical to the pre-migration baseline at
+  `4f71968` — `git show 4f71968:src/components/modules/EventManagement.tsx`
+  returns the same three lines. There was nothing to confirm, and nothing to
+  flip.
+- **The map notification-bleed fix is in place.** All three map roots carry
+  `isolation: isolate` (`index.css`), and `mapStacking.test.js` *discovers*
+  map roots rather than listing them, so a fourth unisolated map fails the
+  suite. Only the visual result in a real browser remains unasserted — jsdom
+  has no layout engine. That is a two-minute manual look, not a code change.
 
 *Next pass: the "simplify the admin design" request, still not started — the
 pre-audit surface is now functional, so the design pass can proceed against real
