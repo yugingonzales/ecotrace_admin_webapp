@@ -12,10 +12,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'jsdom',
-    // Both extensions are listed because the TypeScript -> JavaScript migration
-    // is in progress: source files move to .js/.jsx one batch at a time, so a
-    // single-extension glob would silently discover zero tests and `npm test`
-    // would exit 1. Narrow this to .js/.jsx once the last .ts file is converted.
-    include: ['src/**/*.test.{js,jsx,ts,tsx}'],
+    // Every test file is now .js/.jsx. The glob used to list .ts/.tsx as well,
+    // so a mid-migration state would not silently discover zero tests and exit 1.
+    include: ['src/**/*.test.{js,jsx}'],
   },
 })

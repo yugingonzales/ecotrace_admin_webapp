@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { EventDraft } from './store'
+
+/** @typedef {import('./store.js').EventDraft} EventDraft */
 
 /**
  * Store tests.
@@ -16,7 +17,8 @@ async function freshStore() {
 
 const STORAGE_KEY = 'ecotrace_store_v1'
 
-const draft = (over: Partial<EventDraft> = {}): EventDraft => ({
+/** @param {Partial<EventDraft>} [over] @returns {EventDraft} */
+const draft = (over = {}) => ({
   title: 'Mangrove Recovery Drive',
   description: '',
   plantFrom: '',
@@ -50,7 +52,7 @@ describe('date helpers', () => {
     expect(isoToDisplay('2026-05-15')).toBe('May 15, 2026')
     const d = parseDisplayDate('May 15, 2026')
     expect(d).not.toBeNull()
-    expect(formatDisplayDate(d!)).toBe('May 15, 2026')
+    expect(formatDisplayDate(/** @type {Date} */ (d))).toBe('May 15, 2026')
   })
 
   it('refuses to parse a malformed display date rather than returning an Invalid Date', async () => {
@@ -170,7 +172,9 @@ describe('event reducers', () => {
   it('recomputes the target from the new quota and staff count', async () => {
     const { actions, getSnapshot } = await freshStore()
     actions.reassignQuotas('E001', 4) // was 50 x 45 = 2250
-    const ev = getSnapshot().events.find(e => e.id === 'E001')!
+    const ev = /** @type {import('./store.js').PortalEvent} */ (
+      getSnapshot().events.find(e => e.id === 'E001')
+    )
     expect(ev.quota).toBe(4)
     expect(ev.target).toBe(4 * 45)
   })
@@ -179,7 +183,9 @@ describe('event reducers', () => {
     const { actions, getSnapshot } = await freshStore()
     const created = actions.createEvent(draft(), true)
     actions.reassignQuotas(created.id, 12)
-    const ev = getSnapshot().events.find(e => e.id === created.id)!
+    const ev = /** @type {import('./store.js').PortalEvent} */ (
+      getSnapshot().events.find(e => e.id === created.id)
+    )
     expect(ev.quota).toBe(12)
     expect(ev.target).toBe(0) // 12 x 0 staff, not a made-up number
   })
@@ -216,7 +222,7 @@ describe('persistence', () => {
     actions.setActor({ name: 'Admin Jane', email: 'jane@uep.edu.ph' })
     actions.approveSubmissions(['SUB-4421'])
 
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+    const saved = JSON.parse(/** @type {string} */ (localStorage.getItem(STORAGE_KEY)))
     expect(saved.toasts).toBeUndefined()
     expect(saved.actor).toBeUndefined()
     // ...but the actor is still used for audit attribution right now.
@@ -386,8 +392,10 @@ describe('attention items', () => {
 describe('derived selectors', () => {
   it('returns null progress for an event with no target', async () => {
     const { eventProgress } = await freshStore()
-    expect(eventProgress({ target: 0, verified: 0 } as never)).toBeNull()
-    expect(eventProgress({ target: 100, verified: 25 } as never)).toBe(25)
+    // Only the two fields eventProgress reads are needed; the `as never` casts
+    // existed to satisfy the full PortalEvent parameter.
+    expect(eventProgress(/** @type {any} */ ({ target: 0, verified: 0 }))).toBeNull()
+    expect(eventProgress(/** @type {any} */ ({ target: 100, verified: 25 }))).toBe(25)
   })
 
   it('activeEvents excludes drafts and completed runs', async () => {

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Sidebar from './components/Sidebar'
-import Login, { type SessionUser } from './components/Login'
+import Login from './components/Login'
 import ToastViewport from './components/ToastViewport'
 import Overview from './components/modules/Overview'
 import EventManagement from './components/modules/EventManagement'
@@ -12,26 +12,31 @@ import {
   LEGACY_NOTIFICATION_TARGET,
   MODULE_TITLES,
   usePortal,
-  type NotifType,
-  type NotificationTarget,
 } from './lib/store'
 import { useEscapeToClose } from './lib/useEscapeToClose'
 import { useOutsideClick } from './lib/useOutsideClick'
 import { downloadCsv } from './lib/csv'
 
+/** @typedef {import('react').ReactNode} ReactNode */
+/** @typedef {import('./components/Login.jsx').SessionUser} SessionUser */
+/** @typedef {import('./lib/store.js').NotifType} NotifType */
+/** @typedef {import('./lib/store.js').NotificationTarget} NotificationTarget */
+
 const SIDEBAR_WIDTH = 220
 const SESSION_KEY = 'ecotrace_session'
 
-function readSession(): SessionUser | null {
+/** @returns {SessionUser | null} */
+function readSession() {
   try {
     const raw = localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY)
-    return raw ? (JSON.parse(raw) as SessionUser) : null
+    return raw ? /** @type {SessionUser} */ (JSON.parse(raw)) : null
   } catch {
     return null
   }
 }
 
-function getInitials(name: string): string {
+/** @param {string} name @returns {string} */
+function getInitials(name) {
   return (
     name
       .split(' ')
@@ -42,7 +47,8 @@ function getInitials(name: string): string {
   )
 }
 
-function timeAgo(ts: number): string {
+/** @param {number} ts @returns {string} */
+function timeAgo(ts) {
   const sec = Math.floor((Date.now() - ts) / 1000)
   if (sec < 60) return 'just now'
   const min = Math.floor(sec / 60)
@@ -54,13 +60,19 @@ function timeAgo(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-const notifTone = (type: NotifType) =>
+/** @param {NotifType} type @returns {string} */
+const notifTone = type =>
   type === 'error' ? 'badge-danger' : type === 'warning' ? 'badge-warning' : 'badge-accent'
 
-const notifGlyph = (type: NotifType) => (type === 'error' ? '⚠' : type === 'warning' ? '!' : 'i')
+/** @param {NotifType} type @returns {string} */
+const notifGlyph = type => (type === 'error' ? '⚠' : type === 'warning' ? '!' : 'i')
 
-/** Where a row will take you, for the row's tooltip and accessible name. */
-const targetLabel = (t: NotificationTarget): string =>
+/**
+ * Where a row will take you, for the row's tooltip and accessible name.
+ * @param {NotificationTarget} t
+ * @returns {string}
+ */
+const targetLabel = t =>
   t.module === 'submissions' ? 'Open in Submissions' : `Go to ${MODULE_TITLES[t.module]}`
 
 /**
@@ -69,8 +81,12 @@ const targetLabel = (t: NotificationTarget): string =>
  * Tabs are switched by hiding panes, not by unmounting them, so filter state,
  * scroll position and half-typed filters survive a tab round trip. Leaflet maps
  * are the exception that needs a nudge on re-show — see `MapAutoResize`.
+ *
+ * @param {object} props
+ * @param {boolean} props.show
+ * @param {ReactNode} props.children
  */
-function ModulePane({ show, children }: { show: boolean; children: ReactNode }) {
+function ModulePane({ show, children }) {
   return (
     <div style={{ display: show ? undefined : 'none' }} aria-hidden={!show} inert={!show}>
       {children}
@@ -81,16 +97,19 @@ function ModulePane({ show, children }: { show: boolean; children: ReactNode }) 
 export default function App() {
   const { active, visited, navigate, notifications, unreadCount, pendingCount, submissions, attention, storeActions } = usePortal()
   const [notifOpen, setNotifOpen] = useState(false)
-  const [user, setUser] = useState<SessionUser | null>(readSession)
+  // Lazy initialiser: the argument is the thunk `readSession`, not a SessionUser.
+  const [user, setUser] = useState(readSession)
   const [menuOpen, setMenuOpen] = useState(false)
 
   // Refs for the two header popovers. The trigger refs are handed to the
   // outside-click hook alongside the panel refs, so clicking the bell to close
   // the panel is not immediately undone by the hook dismissing it first.
-  const notifBtnRef = useRef<HTMLButtonElement>(null)
-  const notifPanelRef = useRef<HTMLDivElement>(null)
-  const menuBtnRef = useRef<HTMLButtonElement>(null)
-  const menuPanelRef = useRef<HTMLDivElement>(null)
+  // The element type is pinned by casting the argument; `useRef<T>(null)` in a
+  // .jsx file parses as a comparison, not a generic.
+  const notifBtnRef = useRef(/** @type {HTMLButtonElement | null} */ (null))
+  const notifPanelRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const menuBtnRef = useRef(/** @type {HTMLButtonElement | null} */ (null))
+  const menuPanelRef = useRef(/** @type {HTMLDivElement | null} */ (null))
 
   // Audit rows are attributed to whoever is signed in. Session-scoped, so it is
   // deliberately not persisted with the rest of the store.
@@ -120,7 +139,11 @@ export default function App() {
     setMenuOpen(v => !v)
   }
 
-  const handleLogin = (u: SessionUser, remember: boolean) => {
+  /**
+   * @param {SessionUser} u
+   * @param {boolean} remember
+   */
+  const handleLogin = (u, remember) => {
     ;(remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(u))
     setUser(u)
   }
@@ -162,8 +185,10 @@ export default function App() {
    * module is split off explicitly rather than spread into `navigate`, so a
    * target field that the destination does not consume can never leak through as
    * an instruction it will silently ignore.
+   *
+   * @param {NotificationTarget} target
    */
-  const goTo = (target: NotificationTarget) => {
+  const goTo = target => {
     if (target.module === 'submissions') {
       navigate('submissions', { status: target.status, type: target.type, treeTag: target.treeTag, event: target.event })
     } else {
