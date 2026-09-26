@@ -1,9 +1,9 @@
 /**
- * Cross-check the live API against src/lib/trees.ts.
+ * Cross-check the live API against src/lib/trees.js.
  *
  * This is the test that matters. Everything else in the repo - MapView markers,
  * the Flutter campusTrees list, the admin's filter dropdowns - renders from
- * trees.ts, so the database drifting away from that file would desync all three
+ * trees.js, so the database drifting away from that file would desync all three
  * consumers at once. The log already records one instance of exactly this bug
  * (a zone-naming divergence), so it is asserted rather than assumed.
  *
@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -23,7 +23,13 @@ const STATUS_MAP = { verified: 'verified', pending: 'pending', incident: 'incide
 
 /** Same extraction the seed generator uses, so the two cannot diverge. */
 function readTrees() {
-  const source = readFileSync(resolve(repoRoot, 'src', 'lib', 'trees.ts'), 'utf8')
+  // Resolve the extension instead of hardcoding it: this file and
+  // server/scripts/generate-seed.mjs must both find the same module.
+  const source = ['trees.js', 'trees.mjs', 'trees.ts']
+    .map((f) => resolve(repoRoot, 'src', 'lib', f))
+    .filter((p) => existsSync(p))
+    .map((p) => readFileSync(p, 'utf8'))[0]
+  if (source === undefined) throw new Error('could not find src/lib/trees.{js,mjs,ts}')
   const pattern = /\{\s*id:\s*'([^']+)'\s*,\s*lat:\s*(-?[\d.]+)\s*,\s*lng:\s*(-?[\d.]+)\s*,\s*status:\s*'(\w+)'\s*,\s*staffName:\s*'([^']+)'\s*,\s*species:\s*'([^']+)'\s*,\s*datePlanted:\s*'[^']+'\s*,\s*plantedIso:\s*'(\d{4}-\d{2}-\d{2})'\s*,\s*treeTag:\s*'([^']+)'\s*,\s*zone:\s*'([^']+)'\s*\}/g
   const trees = []
   let m
@@ -50,11 +56,11 @@ test('API is reachable', { skip: !reachable && 'API not running on ' + BASE }, (
   assert.ok(reachable)
 })
 
-test('trees.ts still yields 23 rows', { skip: !reachable }, () => {
-  assert.equal(fixtures.length, 23, 'trees.ts is the source of truth; if this changed, update the seed too')
+test('trees.js still yields 23 rows', { skip: !reachable }, () => {
+  assert.equal(fixtures.length, 23, 'trees.js is the source of truth; if this changed, update the seed too')
 })
 
-test('GET /api/plants returns every tree in trees.ts', { skip: !reachable }, async () => {
+test('GET /api/plants returns every tree in trees.js', { skip: !reachable }, async () => {
   const { status, body } = await get('/api/plants')
   assert.equal(status, 200)
   assert.equal(body.total, 23)

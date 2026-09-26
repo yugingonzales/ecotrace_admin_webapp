@@ -2,27 +2,38 @@
  * Shared tree inventory used by MapView (map display) and EventManagement
  * (boundary + date-range eligibility filter).
  */
-import { pointInBoundary, type Boundary, type ZoneName } from './site'
+import { pointInBoundary } from './site.js'
 
-export type StatusKey = 'verified' | 'pending' | 'incident' | 'unverified'
+/** @typedef {import('./site.js').Boundary} Boundary */
+/** @typedef {import('./site.js').ZoneName} ZoneName */
 
-export interface TreeMarker {
-  id: string
-  lat: number
-  lng: number
-  status: StatusKey
-  staffName: string
-  species: string
-  /** Human-readable display string, e.g. 'Mar 12, 2026'. */
-  datePlanted: string
-  /** ISO date string for reliable range comparison, e.g. '2026-03-12'. */
-  plantedIso: string
-  treeTag: string
-  zone: ZoneName
-}
+/** @typedef {'verified' | 'pending' | 'incident' | 'unverified'} StatusKey */
 
-/** Complete tree inventory (mock data). */
-export const trees: TreeMarker[] = [
+/**
+ * @typedef {Object} TreeMarker
+ * @property {string} id
+ * @property {number} lat
+ * @property {number} lng
+ * @property {StatusKey} status
+ * @property {string} staffName
+ * @property {string} species
+ * @property {string} datePlanted  Human-readable display string, e.g. 'Mar 12, 2026'.
+ * @property {string} plantedIso   ISO date string for reliable range comparison, e.g. '2026-03-12'.
+ * @property {string} treeTag
+ * @property {ZoneName} zone
+ */
+
+/**
+ * Complete tree inventory (mock data).
+ *
+ * NOTE: server/scripts/generate-seed.mjs and server/test/api.test.js both parse
+ * the literal rows below out of this file's source text with a regex. The field
+ * order and quoting in the rows are load-bearing - do not reformat them. If the
+ * filename ever changes again, update the `treesPath` in both consumers.
+ *
+ * @type {TreeMarker[]}
+ */
+export const trees = [
   // ── Zone I ────────────────────────────────────────────────────
   { id: 'TRE-0892', lat: 12.5101, lng: 124.6679, status: 'verified', staffName: 'Juan Santos', species: 'Narra', datePlanted: 'Mar 12, 2026', plantedIso: '2026-03-12', treeTag: 'TRE-0892', zone: 'Zone I' },
   { id: 'TRE-0567', lat: 12.5098, lng: 124.6681, status: 'incident', staffName: 'Maria Reyes', species: 'Molave', datePlanted: 'Mar 15, 2026', plantedIso: '2026-03-15', treeTag: 'TRE-0567', zone: 'Zone I' },
@@ -59,8 +70,13 @@ export const trees: TreeMarker[] = [
 
 /* ── Eligibility filter ────────────────────────────────────────── */
 
-/** Expand a user-selected ISO date to a whole-month range (first → last day). */
-function monthBounds(isoDate: string): [string, string] | null {
+/**
+ * Expand a user-selected ISO date to a whole-month range (first -> last day).
+ *
+ * @param {string} isoDate
+ * @returns {[string, string] | null}
+ */
+function monthBounds(isoDate) {
   const parts = isoDate.split('-')
   if (parts.length !== 3) return null
   const year = Number(parts[0])
@@ -83,13 +99,19 @@ function monthBounds(isoDate: string): [string, string] | null {
  *
  * The filtering stays client-side because `boundary` is a polygon and the
  * point-in-polygon test has no server equivalent.
+ *
+ * @param {Boundary} boundary
+ * @param {string} plantedFrom
+ * @param {string} plantedTo
+ * @param {TreeMarker[]} [source]
+ * @returns {TreeMarker[]}
  */
 export function treesEligibleForVerification(
-  boundary: Boundary,
-  plantedFrom: string,
-  plantedTo: string,
-  source: TreeMarker[] = trees,
-): TreeMarker[] {
+  boundary,
+  plantedFrom,
+  plantedTo,
+  source = trees,
+) {
   if (boundary.length < 3 || !plantedFrom || !plantedTo) return []
 
   const [lower] = monthBounds(plantedFrom) ?? []

@@ -1,5 +1,5 @@
 -- GENERATED FILE - do not hand-edit.
--- Source:     src/lib/trees.ts  (the authoritative mock inventory)
+-- Source:     src/lib/trees.js  (the authoritative mock inventory)
 -- Generator:  server/scripts/generate-seed.mjs
 -- Regenerate: node server/scripts/generate-seed.mjs
 --

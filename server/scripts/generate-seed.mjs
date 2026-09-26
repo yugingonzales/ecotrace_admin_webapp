@@ -1,16 +1,33 @@
 /**
- * Regenerate `server/migrations/002_seed_plants.sql` from `src/lib/trees.ts`.
+ * Regenerate `server/migrations/002_seed_plants.sql` from `src/lib/trees.js`.
  *
  * Run:  node server/scripts/generate-seed.mjs
  */
-import { readFileSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { dirname, resolve, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(here, '..', '..')
-const treesPath = resolve(repoRoot, 'src', 'lib', 'trees.ts')
+const treesPath = resolveTreesSource(repoRoot)
+const treesFileName = basename(treesPath)
 const outPath = resolve(repoRoot, 'server', 'migrations', '002_seed_plants.sql')
+
+/**
+ * Locate `src/lib/trees.*`.
+ *
+ * The module is plain JavaScript now, but the seed generator and the API
+ * cross-check both parse it as text, so they must agree on the filename. This
+ * resolves the extension rather than hardcoding one: a future rename then
+ * fails loudly here with a clear message instead of ENOENT three frames deep.
+ */
+function resolveTreesSource(root) {
+  for (const candidate of ['trees.js', 'trees.mjs', 'trees.ts']) {
+    const p = resolve(root, 'src', 'lib', candidate)
+    if (existsSync(p)) return p
+  }
+  fail('could not find src/lib/trees.{js,mjs,ts} - update resolveTreesSource()')
+}
 
 // StatusKey -> plant_status. Now 1:1 for all four admin statuses. The ENUM was
 // widened across migrations 001 and 002 so that no value is approximated; an
@@ -45,7 +62,7 @@ const counts = trees.reduce((acc,t)=>({...acc,[t.status]:(acc[t.status]??0)+1}),
 const rows = trees.map(t=>`  ('${t.treeCode}','${t.zone}',${t.lat},${t.lng},'${t.plantedIso}','${t.species}','${STATUS_MAP[t.status]}',${VERIFIED_COUNTS[t.status]},'${t.staffName}')`).join(',\n')
 
 const header = `-- GENERATED FILE - do not hand-edit.
--- Source:     src/lib/trees.ts  (the authoritative mock inventory)
+-- Source:     src/lib/${treesFileName}  (the authoritative mock inventory)
 -- Generator:  server/scripts/generate-seed.mjs
 -- Regenerate: node server/scripts/generate-seed.mjs
 --

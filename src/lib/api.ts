@@ -22,7 +22,7 @@
  *   1. Start the API on port 3000 (see the log for the route table).
  *   2. `cp .env.example .env.local` and set `VITE_ENABLE_API=true`.
  *   3. In dev, requests to `/api` are proxied to `http://localhost:3000` by
- *      `vite.config.ts`, so no CORS configuration is needed.
+ *      `vite.config.js`, so no CORS configuration is needed.
  */
 import type {
   AuthSession,

@@ -56,7 +56,7 @@ There is none — the Flutter app genuinely cannot talk to a network today.
 
 What changed: `server/` now serves a parameterised, read-only REST surface backed
 by a real MariaDB connection pool, `MapView` consumes it through `usePlants()`
-(behind `VITE_ENABLE_API`, with the local `trees.ts` fixture as a documented
+(behind `VITE_ENABLE_API`, with the local `trees.js` fixture as a documented
 fallback so the map is never empty), and the admin's write actions persist to
 `localStorage` instead of a non-existent write endpoint. That last point is the
 honest limitation: **the portal cannot yet save an approval to the database**, and
@@ -78,8 +78,8 @@ the UI says so in a banner rather than implying otherwise.
 | Apache service | running | **stopped** | Only if serving via XAMPP |
 | `ecotrace_db` | exists | **exists**, 7 tables / 3 views / 2 triggers | None |
 | REST API on :3000 | serving | **serving, read-only** **[updated]** | Write endpoints still to be built |
-| Admin dev server | :8443 | configured (`vite.config.ts`, `strictPort`) | None |
-| `/api` proxy | → :3000 | **configured** (`vite.config.ts`, dev + preview) | None |
+| Admin dev server | :8443 | configured (`vite.config.js`, `strictPort`) | None |
+| `/api` proxy | → :3000 | **configured** (`vite.config.js`, dev + preview) | None |
 | Flutter `http` dep | declared | **absent** | Add when mobile is wired up |
 
 The database was inspected **offline** by decoding the InnoDB `.frm` files
@@ -570,6 +570,8 @@ visual behaviour remain manual.
 | 2026-09-26 | Made every notification row clickable, with chevron + tooltip | `src/App.tsx` |
 | 2026-09-26 | Routed focus into the submissions drawer / filters | `src/components/modules/SubmissionsView.tsx` |
 | 2026-09-26 | Added notification-target + deep-link tests (14) | `src/lib/store.test.ts`, `src/lib/notificationTargets.test.tsx` |
+| 2026-09-26 | TS→JS migration **phase 1 + spike**: `tsconfig.json`→`jsconfig.json` (`checkJs`), `vite.config`/`vitest.config`/`trees` renamed to `.js`, both `server/` text-parsers made extension-agnostic | §11 |
+
 
 **Verification:** `npx tsc --noEmit` → exit 0. `npx vite build` → success
 (859.42 kB / 247.96 kB gzipped; pre-existing chunk-size warning only).
@@ -594,3 +596,86 @@ Vite HMR cached the sheet). See §10.3 for the two one-word flips on this pass.
 *Next pass: the "simplify the admin design" request, still not started — the
 pre-audit surface is now functional, so the design pass can proceed against real
 state instead of hardcoded arrays.*
+
+---
+
+## 11. TypeScript -> JavaScript (JSDoc) migration
+
+**Status: IN PROGRESS.** Phase 1 (tooling) and the Phase 2 spike (one
+representative module) are complete and verified. The remaining 26 `src/`
+modules are not yet converted. Nothing is committed yet.
+
+### 11.1 Why
+
+The instructor requires JavaScript rather than TypeScript. This is an
+external, non-negotiable constraint, not a technical preference, so the
+migration proceeds. The goal became **comply fully without discarding the
+guarantees that were load-bearing** - specifically the schema mirror in
+`src/lib/types.ts` and the compile-time checks on call sites.
+
+### 11.2 Approach: JSDoc, not annotation deletion
+
+`tsconfig.json` is replaced by `jsconfig.json` with `allowJs` + `checkJs`.
+Sources are plain `.js`/`.jsx` with JSDoc annotations; the TypeScript
+compiler stays as a **devDependency only** and is run via
+`npm run typecheck` (`tsc -p jsconfig.json --noEmit`). Vite/esbuild already
+compiled the app without `tsc`, so the build path is unchanged.
+
+`jsconfig.json` mirrors the old `tsconfig.json` options exactly. It
+deliberately does **not** add `noUnusedLocals`/`noUnusedParameters`: a
+baseline worktree at `4f71968` typechecked clean, and enabling those flags
+introduced two `TS6133` errors in `store.test.ts` that were never errors
+before. Matching the original flag set keeps the gate meaningful.
+
+### 11.3 Completed so far
+
+| File | Notes |
+| --- | --- |
+| `jsconfig.json` | new; replaces `tsconfig.json` (deleted) |
+| `package.json` | `typecheck` now `tsc -p jsconfig.json --noEmit` |
+| `vite.config.ts` -> `.js` | 374 lines, 3 Vite plugins; needed `@returns {Plugin}` restored on each factory so Vite's hook types still contextually type the parameters |
+| `vitest.config.ts` -> `.js` | test glob narrowed to `src/**/*.test.{js,jsx}` |
+| `src/lib/trees.ts` -> `.js` | 23 data rows left byte-identical on purpose |
+
+**`vite.config.js` needed more than a mechanical strip.** Removing the
+`: Plugin` return annotations silently de-typed every Vite hook parameter
+(`TS7006` implicit-any on `server`, `code`, `id`, `socket`). Restoring
+`@returns {Plugin}` on each factory reinstates contextual typing, which is
+the JSDoc equivalent of the original return type.
+
+### 11.4 A cross-tier coupling the migration exposed
+
+`src/lib/trees.*` is parsed **as text** by two files in `server/`, both of
+which hardcoded the string `trees.ts`:
+
+- `server/scripts/generate-seed.mjs` - generates `002_seed_plants.sql`
+- `server/test/api.test.js` - the live-API cross-check (the test the log
+  calls "the test that matters")
+
+Renaming to `trees.js` broke the seed generator with `ENOENT`. Both now
+resolve the extension instead of hardcoding one, so a future rename fails
+loudly and locally instead of three frames deep. The 23 rows were kept in
+their original field order and quoting because both regexes depend on it.
+
+**Verification that this coupling is intact:** re-running the generator
+reproduces the SQL with exactly one changed line - the `-- Source:` header,
+now `trees.js`. All 23 data rows and the status-count line are unchanged.
+
+### 11.5 Verification of the current partial state
+
+- `npm run typecheck` - **clean, 0 errors**
+- `npx vitest run` - **58/58** (run with a temporary broad `*.test.{js,jsx,ts,tsx}`
+  glob, since 5 test files are still `.ts`/`.tsx`; the committed
+  `vitest.config.js` keeps the narrow `.js`/`.jsx` glob for the finished state)
+- `npx vite build` - **859.42 kB / 247.96 kB gz, CSS 42.35 kB** - byte-identical
+  to the pre-migration baseline
+- `server/ npm test` - **13/13**
+
+### 11.6 Known cost of this approach
+
+The discriminated `NotificationTarget` union and the required `target`
+parameter on `pushNotification` were compile-time guarantees. Under JSDoc
+they remain editor hints and are still checked by `npm run typecheck`, but
+they are no longer enforced by the **build**. If a build-time guard is
+wanted back, an ESLint rule is the way - deliberately not added here.
+
