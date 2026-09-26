@@ -1,16 +1,20 @@
 import { useMemo, useState } from 'react'
 import EventBoundaryEditor from '../map/EventBoundaryEditor'
-import type { Boundary } from '../../lib/site'
 import { treesEligibleForVerification } from '../../lib/trees'
 import { usePlants } from '../../lib/usePlants'
-import { eventProgress, usePortal, type EventDraft, type PortalEvent } from '../../lib/store'
+import { eventProgress, usePortal } from '../../lib/store'
 import { useEscapeToClose, useScrollLock } from '../../lib/useEscapeToClose'
 import { downloadCsv } from '../../lib/csv'
 
-// Events now live in the shared store (`lib/store.tsx`) so Create, Extend and
+/** @typedef {import('../../lib/site.js').Boundary} Boundary */
+/** @typedef {import('../../lib/store.js').EventDraft} EventDraft */
+/** @typedef {import('../../lib/store.js').PortalEvent} PortalEvent */
+
+// Events now live in the shared store (`lib/store.jsx`) so Create, Extend and
 // Reassign Quotas can mutate them. This module only reads.
 
-const statusStyle: Record<string, string> = {
+/** @type {Record<string, string>} */
+const statusStyle = {
   active: 'badge-accent',
   completed: 'badge-neutral',
   draft: 'badge-warning',
@@ -21,6 +25,7 @@ const statusStyle: Record<string, string> = {
  * can only be correct if it is the *same* list the chips are rendered from.
  * Rebuilding it per render would have made `metrics.length === options.length`
  * compare against a fresh identity every time.
+ * @type {readonly string[]}
  */
 const METRIC_OPTIONS = [
   'GPS Coordinates',
@@ -29,12 +34,28 @@ const METRIC_OPTIONS = [
   'Growth Stage',
   'Diameter Measurement (cm)',
   'Survival Status',
-] as const
+]
 
-function CreateEventForm({ onClose }: { onClose: () => void }) {
+/** @param {{ onClose: () => void }} props */
+function CreateEventForm({ onClose }) {
   const { storeActions } = usePortal()
-  const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState({
+  const [error, setError] = useState(/** @type {string | null} */ (null))
+  /**
+   * @typedef {object} EventFormState
+   * @property {string} title
+   * @property {string} description
+   * @property {string} plantFrom
+   * @property {string} plantTo
+   * @property {string} quota
+   * @property {string} start
+   * @property {string} end
+   * @property {string} zone
+   * @property {Boundary} boundary
+   * @property {string} guidelines
+   * @property {string[]} metrics
+   */
+
+  const [form, setForm] = useState(/** @type {EventFormState} */ ({
     title: '',
     description: '',
     plantFrom: '',
@@ -43,12 +64,13 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     start: '',
     end: '',
     zone: '',
-    boundary: [] as Boundary,
+    boundary: /** @type {Boundary} */ ([]),
     guidelines: '',
-    metrics: [] as string[],
-  })
+    metrics: /** @type {string[]} */ ([]),
+  }))
 
-  const toggleMetric = (m: string) => {
+  /** @param {string} m */
+  const toggleMetric = m => {
     setForm(f => ({
       ...f,
       metrics: f.metrics.includes(m) ? f.metrics.filter(x => x !== m) : [...f.metrics, m],
@@ -82,7 +104,8 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
 
   /** One validator for both footer buttons, so Save-draft and Publish cannot
    *  disagree about what a valid event is. */
-  const submit = (publish: boolean) => {
+  /** @param {boolean} publish */
+  const submit = publish => {
     if (!form.title.trim()) return setError('Event name is required.')
     if (!form.start) return setError('Start date is required.')
     if (!form.end) return setError('End date is required.')
@@ -100,7 +123,8 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     }
     setError(null)
 
-    const draft: EventDraft = {
+    /** @type {EventDraft} */
+    const draft = {
       title: form.title,
       description: form.description,
       plantFrom: form.plantFrom,
@@ -390,10 +414,12 @@ export default function EventManagement() {
   const [showCreate, setShowCreate] = useState(false)
   // Held as an id so the dashboard always renders the live row: after Extend
   // Quotas the old object would still show the pre-action end date.
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState(/** @type {string | null} */ (null))
   const [yearFilter, setYearFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [quotaDraft, setQuotaDraft] = useState<{ id: string; value: string } | null>(null)
+  const [quotaDraft, setQuotaDraft] = useState(
+    /** @type {{ id: string, value: string } | null} */ (null),
+  )
 
   const selectedEvent = selectedId ? (events.find(e => e.id === selectedId) ?? null) : null
 
@@ -408,7 +434,8 @@ export default function EventManagement() {
     return true
   })
 
-  const exportLog = (ev: PortalEvent) => {
+  /** @param {PortalEvent} ev */
+  const exportLog = ev => {
     const n = downloadCsv(
       `ecotrace_event_${ev.id}_log.csv`,
       ['Event', 'Event ID', 'S.Y.', 'Zone', 'Start', 'End', 'Quota / staff', 'Staff', 'Target', 'Verified', 'Pending', 'Incidents', 'Status'],
