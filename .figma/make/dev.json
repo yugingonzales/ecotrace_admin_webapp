@@ -11,7 +11,7 @@
   //
   // Only list files that affect the *toolchain or dependency tree* here —
   // NOT application source files. Vite's dev server already watches
-  // application code (src/**/*) and config (vite.config.ts) via its own HMR
+  // application code (src/**/*) and config (vite.config.js) via its own HMR
   // pipeline, so including them here would cause a redundant full restart.
   "installOn": [
     "package.json",
