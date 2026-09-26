@@ -2,28 +2,31 @@ import { useState } from 'react'
 import collegeBg from '../assets/college_of_science.jpg'
 import uepLogo from '../assets/uep_logo.jpg'
 
-type AuthMode = 'signin' | 'signup'
+/** @typedef {'signin' | 'signup'} AuthMode */
 
-export interface SessionUser {
-  name: string
-  email: string
-}
+/**
+ * @typedef {object} SessionUser
+ * @property {string} name
+ * @property {string} email
+ */
 
-interface LoginProps {
-  onLogin: (user: SessionUser, remember: boolean) => void
-}
+/**
+ * @typedef {object} LoginProps
+ * @property {(user: SessionUser, remember: boolean) => void} onLogin
+ */
 
-interface AdminAccount extends SessionUser {
-  password: string
-  createdAt: string
-}
+/**
+ * JSDoc has no `extends`; an extending interface becomes an intersection.
+ * @typedef {SessionUser & { password: string, createdAt: string }} AdminAccount
+ */
 
 const ACCOUNTS_KEY = 'ecotrace_admin_accounts'
 
 // -- Customize these to match your institution -- 
 const SCHOOL_NAME = 'EcoTrace Admin Portal'
 const SCHOOL_TAGLINE = ''
-const DEMO_ACCOUNT: AdminAccount = {
+/** @type {AdminAccount} */
+const DEMO_ACCOUNT = {
   name: 'Admin Jane',
   email: 'admin@school.edu',
   password: 'admin123',
@@ -31,10 +34,11 @@ const DEMO_ACCOUNT: AdminAccount = {
 }
 // --
 
-function loadAccounts(): AdminAccount[] {
+/** @returns {AdminAccount[]} */
+function loadAccounts() {
   try {
     const raw = localStorage.getItem(ACCOUNTS_KEY)
-    if (raw) return JSON.parse(raw) as AdminAccount[]
+    if (raw) return /** @type {AdminAccount[]} */ (JSON.parse(raw))
   } catch {
     /* corrupted storage - reseed below */
   }
@@ -42,12 +46,14 @@ function loadAccounts(): AdminAccount[] {
   return [DEMO_ACCOUNT]
 }
 
-function saveAccounts(accounts: AdminAccount[]) {
+/** @param {AdminAccount[]} accounts */
+function saveAccounts(accounts) {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
 }
 
-export default function Login({ onLogin }: LoginProps) {
-  const [mode, setMode] = useState<AuthMode>('signin')
+/** @param {LoginProps} props */
+export default function Login({ onLogin }) {
+  const [mode, setMode] = useState(/** @type {AuthMode} */ ('signin'))
   const [firstName, setFirstName] = useState('')
   const [middleName, setMiddleName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -56,10 +62,11 @@ export default function Login({ onLogin }: LoginProps) {
   const [confirm, setConfirm] = useState('')
   const [remember, setRemember] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState(/** @type {Record<string, string>} */ ({}))
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
-  const switchMode = (next: AuthMode) => {
+  /** @param {AuthMode} next */
+  const switchMode = next => {
     setMode(next)
     setErrors({})
     setNotice('')
@@ -67,8 +74,10 @@ export default function Login({ onLogin }: LoginProps) {
     setConfirm('')
   }
 
-  const validateSignIn = (): boolean => {
-    const next: Record<string, string> = {}
+  /** @returns {boolean} */
+  const validateSignIn = () => {
+    /** @type {Record<string, string>} */
+    const next = {}
     if (!email.trim()) next.email = 'Email is required.'
     else if (!/^\S+@\S+\.\S+$/.test(email)) next.email = 'Enter a valid email address.'
     if (!password) next.password = 'Password is required.'
@@ -76,8 +85,10 @@ export default function Login({ onLogin }: LoginProps) {
     return Object.keys(next).length === 0
   }
 
-  const validateSignUp = (): boolean => {
-    const next: Record<string, string> = {}
+  /** @returns {boolean} */
+  const validateSignUp = () => {
+    /** @type {Record<string, string>} */
+    const next = {}
     if (!firstName.trim()) next.firstName = 'First name is required.'
     if (!lastName.trim()) next.lastName = 'Last name is required.'
     if (!email.trim()) next.email = 'Email is required.'
@@ -88,7 +99,8 @@ export default function Login({ onLogin }: LoginProps) {
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  /** @param {import('react').FormEvent<HTMLFormElement>} e */
+  const handleSubmit = e => {
     e.preventDefault()
     setNotice('')
 
@@ -117,7 +129,8 @@ export default function Login({ onLogin }: LoginProps) {
           setErrors({ email: 'An account with this email already exists.' })
           return
         }
-        const account: AdminAccount = {
+        /** @type {AdminAccount} */
+        const account = {
           name: [firstName, middleName, lastName].map(s => s.trim()).filter(Boolean).join(' '),
           email: email.trim(),
           password,
@@ -130,7 +143,8 @@ export default function Login({ onLogin }: LoginProps) {
     }
   }
 
-  const errorMark = (field: string) =>
+  /** @param {string} field */
+  const errorMark = field =>
     (errors[field] && (
       <p className="mt-1" style={{ color: 'var(--danger)', fontSize: 11 }}>{errors[field]}</p>
     )) || null
@@ -169,7 +183,7 @@ return (
         <div className="modal-body" style={{ padding: '22px 24px 18px' }}>
           {/* Segmented control */}
           <div className="grid grid-cols-2 gap-1 p-1 rounded-lg mb-6" style={{ background: 'var(--surface-muted)' }}>
-            {(['signin', 'signup'] as AuthMode[]).map(m => (
+            {/** @type {AuthMode[]} */ (['signin', 'signup']).map(m => (
               <button
                 key={m}
                 type="button"

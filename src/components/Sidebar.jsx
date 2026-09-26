@@ -1,19 +1,22 @@
 import uepLogo from '../assets/uep_logo.jpg'
-import type { Module } from '../lib/store'
 
-interface SidebarProps {
-  active: Module
-  onNavigate: (m: Module) => void
-  user?: { name: string; email?: string }
-  /**
-   * Pending-submission count from the store. This badge used to be a hard-coded
-   * `47` that no action could ever move — it now tracks real state, so approving
-   * something in Submissions visibly decrements it.
-   */
-  pendingCount: number
-}
+/** @typedef {import('../lib/store.js').Module} Module */
 
-function getInitials(name: string): string {
+/**
+ * @typedef {object} SidebarProps
+ * @property {Module} active
+ * @property {(m: Module) => void} onNavigate
+ * @property {{ name: string, email?: string }} [user]
+ * @property {number} pendingCount Pending-submission count from the store. This
+ *   badge used to be a hard-coded `47` that no action could ever move — it now
+ *   tracks real state, so approving something in Submissions visibly decrements it.
+ */
+
+/**
+ * @param {string} name
+ * @returns {string}
+ */
+function getInitials(name) {
   return (
     name
       .split(' ')
@@ -24,9 +27,14 @@ function getInitials(name: string): string {
   )
 }
 
+/**
+ * Nav entries. The `id` values are the `Module` union; annotating the array
+ * element type replaces the six per-item `as Module` casts the TS version needed.
+ * @type {{ id: Module, label: string, badge?: boolean, icon: import('react').ReactNode }[]}
+ */
 const nav = [
   {
-    id: 'overview' as Module,
+    id: 'overview',
     label: 'Overview',
     icon: (
       <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
@@ -38,7 +46,7 @@ const nav = [
     ),
   },
   {
-    id: 'events' as Module,
+    id: 'events',
     label: 'Event Management',
     icon: (
       <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
@@ -48,7 +56,7 @@ const nav = [
     ),
   },
   {
-    id: 'submissions' as Module,
+    id: 'submissions',
     label: 'Submissions',
     icon: (
       <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
@@ -59,7 +67,7 @@ const nav = [
     ),
   },
   {
-    id: 'map' as Module,
+    id: 'map',
     label: 'Map View',
     icon: (
       <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
@@ -69,7 +77,7 @@ const nav = [
     ),
   },
   {
-    id: 'analytics' as Module,
+    id: 'analytics',
     label: 'Analytics',
     icon: (
       <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
@@ -78,7 +86,7 @@ const nav = [
     ),
   },
   {
-    id: 'logs' as Module,
+    id: 'logs',
     label: 'Audit Logs',
     icon: (
       <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
@@ -90,7 +98,8 @@ const nav = [
   },
 ]
 
-export default function Sidebar({ active, onNavigate, user, pendingCount }: SidebarProps) {
+/** @param {SidebarProps} props */
+export default function Sidebar({ active, onNavigate, user, pendingCount }) {
   return (
     <aside
       className="flex flex-col"
