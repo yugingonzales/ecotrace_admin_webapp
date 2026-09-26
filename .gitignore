@@ -13,5 +13,6 @@ vite.config.*.timestamp-*
 *-debug.log*
 logs/
 *.log
+*.err
 .claude-replay.*
 .tmp-*

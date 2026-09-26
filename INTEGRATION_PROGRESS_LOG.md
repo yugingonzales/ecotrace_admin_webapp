@@ -6,7 +6,7 @@
 **Latest pass:** TypeScript → JavaScript (JSDoc) migration, TypeScript removed
 entirely (see §11). Before that: clickable notifications + live "Needs
 attention" block (§10)
-**Status:** A **read-only** Node/MariaDB REST API exists (`server/`, Express-free, on
+**Status:** A **read-only** Node/MariaDB REST API exists (`server/`, Express 5, on
 :3000) and `MapView` reads from it via `GET /api/plants`. It is read-only **by
 design** — there is no write path, so approvals, declines and event edits are
 persisted in a browser-local store (`src/lib/store.jsx`) and are **not** yet
