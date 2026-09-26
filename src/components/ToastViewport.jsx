@@ -13,7 +13,8 @@ const TOAST_MS = 3200
  */
 export default function ToastViewport() {
   const { toasts, storeActions } = usePortal()
-  const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+  /** @type {import('react').RefObject<Map<number, ReturnType<typeof setTimeout>>>} */
+  const timers = useRef(new Map())
 
   useEffect(() => {
     for (const t of toasts) {
