@@ -16,19 +16,23 @@
  * element's containing block at all.
  */
 import { act, useRef, useState } from 'react'
-import { createRoot, type Root } from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useOutsideClick } from './useOutsideClick'
 
-declare global {
-  // eslint-disable-next-line no-var
-  var IS_REACT_ACT_ENVIRONMENT: boolean
-}
+// The flag React checks to decide whether `act()` is legal. It has to land on
+// `globalThis` at runtime; under `checkJs` the declaration below is the only
+// way to say so without a `.d.ts` file.
+// eslint-disable-next-line no-var
+var IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-/** jsdom has no PointerEvent in some versions; the hook only reads `target`. */
-function pointerDown(node: Node) {
-  const Ctor = (globalThis as { PointerEvent?: typeof MouseEvent }).PointerEvent
+/**
+ * jsdom has no PointerEvent in some versions; the hook only reads `target`.
+ * @param {Node} node
+ */
+function pointerDown(node) {
+  const Ctor = /** @type {{ PointerEvent?: typeof MouseEvent }} */ (globalThis).PointerEvent
   const event = Ctor
     ? new Ctor('pointerdown', { bubbles: true })
     : new MouseEvent('pointerdown', { bubbles: true })
@@ -43,8 +47,8 @@ function pointerDown(node: Node) {
  */
 function Popover() {
   const [open, setOpen] = useState(true)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef(null)
+  const panelRef = useRef(null)
   useOutsideClick([panelRef, triggerRef], () => setOpen(false), open)
 
   return (
@@ -61,11 +65,14 @@ function Popover() {
   )
 }
 
-let root: Root
+/** @type {import('react-dom/client').Root} */
+let root
 let mounted = true
-let pageContent: HTMLElement
+/** @type {HTMLElement} */
+let pageContent
 
-const get = (testid: string) => document.querySelector(`[data-testid="${testid}"]`)
+/** @param {string} testid */
+const get = testid => document.querySelector(`[data-testid="${testid}"]`)
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -103,7 +110,7 @@ describe('useOutsideClick', () => {
   })
 
   it('stays open when the click lands inside the panel', () => {
-    pointerDown(get('panel')!)
+    pointerDown(/** @type {Node} */ (get('panel')))
     expect(get('panel')).not.toBeNull()
   })
 
@@ -111,11 +118,11 @@ describe('useOutsideClick', () => {
     // Guards the capture-phase ordering: if the trigger were treated as
     // "outside", the hook would dismiss on pointerdown and the button's own
     // onClick would immediately re-open the panel.
-    pointerDown(get('trigger')!)
+    pointerDown(/** @type {Node} */ (get('trigger')))
     expect(get('panel')).not.toBeNull()
 
     act(() => {
-      ;(get('trigger') as HTMLButtonElement).click()
+      ;/** @type {HTMLButtonElement} */ (get('trigger')).click()
     })
     expect(get('panel')).toBeNull()
   })

@@ -8,15 +8,26 @@
  * characters that appear in species names.
  */
 
-export type CsvValue = string | number | null | undefined
+/**
+ * @typedef {string | number | null | undefined} CsvValue
+ */
 
-export function csvCell(value: CsvValue): string {
+/**
+ * @param {CsvValue} value
+ * @returns {string}
+ */
+export function csvCell(value) {
   if (value === null || value === undefined) return ''
   const s = String(value)
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-export function toCsv(headers: string[], rows: CsvValue[][]): string {
+/**
+ * @param {string[]} headers
+ * @param {CsvValue[][]} rows
+ * @returns {string}
+ */
+export function toCsv(headers, rows) {
   return [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n')
 }
 
@@ -24,8 +35,13 @@ export function toCsv(headers: string[], rows: CsvValue[][]): string {
  * Build the CSV and hand it to the browser as a download. Returns the number of
  * data rows so the caller can put an accurate count in the toast, the
  * notification and the audit log rather than guessing.
+ *
+ * @param {string} filename
+ * @param {string[]} headers
+ * @param {CsvValue[][]} rows
+ * @returns {number}
  */
-export function downloadCsv(filename: string, headers: string[], rows: CsvValue[][]): number {
+export function downloadCsv(filename, headers, rows) {
   const body = toCsv(headers, rows)
   const blob = new Blob([`\uFEFF${body}`], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)

@@ -6,7 +6,9 @@ describe('csvCell', () => {
     expect(csvCell('SUB-4421')).toBe('SUB-4421')
     expect(csvCell(42)).toBe('42')
     expect(csvCell(0)).toBe('0')
-    expect(csvCell(false as never)).toBe('false')
+    // `false` is not a member of the CsvValue union; the cast existed to prove the
+    // helper still stringifies a value the type system would have rejected.
+    expect(csvCell(/** @type {any} */ (false))).toBe('false')
   })
 
   it('renders null and undefined as an empty cell, not the words', () => {

@@ -16,7 +16,8 @@ import { resolve } from 'node:path'
  * one that a test runner can give us.
  */
 
-const read = (rel: string) => readFileSync(resolve(__dirname, '..', rel), 'utf8')
+/** @param {string} rel */
+const read = rel => readFileSync(resolve(__dirname, '..', rel), 'utf8')
 
 const css = read('index.css')
 const mapViewSrc = read('components/modules/MapView.tsx')
@@ -36,8 +37,11 @@ const blocks = (() => {
   }))
 })()
 
-/** `isolation: isolate` is declared for `selector`, ignoring comments. */
-const isolates = (selector: string) =>
+/**
+ * `isolation: isolate` is declared for `selector`, ignoring comments.
+ * @param {string} selector
+ */
+const isolates = selector =>
   blocks.some(
     b =>
       /isolation:\s*isolate/.test(b.declarations) &&

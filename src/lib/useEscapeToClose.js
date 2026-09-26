@@ -10,12 +10,14 @@ import { useEffect, useRef } from 'react'
  * dialog first — a plain per-component listener would close both at once,
  * because `stopPropagation` does not stop other listeners on the same node.
  */
-type EscapeHandler = { run: () => void }
+/** @typedef {{ run: () => void }} EscapeHandler */
 
-const stack: EscapeHandler[] = []
+/** @type {EscapeHandler[]} */
+const stack = []
 let attached = false
 
-function onKeyDown(e: KeyboardEvent) {
+/** @param {KeyboardEvent} e */
+function onKeyDown(e) {
   if (e.key !== 'Escape') return
   const top = stack[stack.length - 1]
   if (!top) return
@@ -23,7 +25,11 @@ function onKeyDown(e: KeyboardEvent) {
   top.run()
 }
 
-export function useEscapeToClose(onEscape: () => void, active = true) {
+/**
+ * @param {() => void} onEscape
+ * @param {boolean} [active]
+ */
+export function useEscapeToClose(onEscape, active = true) {
   // Held in a ref so a caller can pass an inline arrow without re-registering
   // the handler on every render.
   const latest = useRef(onEscape)
@@ -33,7 +39,7 @@ export function useEscapeToClose(onEscape: () => void, active = true) {
 
   useEffect(() => {
     if (!active) return
-    const entry: EscapeHandler = { run: () => latest.current() }
+    const entry = { run: () => latest.current() }
     stack.push(entry)
     if (!attached) {
       attached = true
@@ -54,6 +60,8 @@ export function useEscapeToClose(onEscape: () => void, active = true) {
  * Body scroll lock for a full-screen overlay. Kept separate from the escape hook
  * so a component can opt into one without the other. Reference-counted for the
  * same reason as the stack above: nested overlays must not unlock on the way out.
+ *
+ * @param {boolean} [active]
  */
 let lockCount = 0
 let previousOverflow = ''

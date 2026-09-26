@@ -1,48 +1,59 @@
 // Shared UEP campus site geometry and helpers reused across map views.
 // UEP Catarman, Northern Samar — surveyed planting zones.
-export interface VBounds {
-  minLat: number
-  minLng: number
-  maxLat: number
-  maxLng: number
-}
 
-export type ZoneName = 'Zone I' | 'Zone II' | 'Zone III'
+/**
+ * @typedef {object} VBounds
+ * @property {number} minLat
+ * @property {number} minLng
+ * @property {number} maxLat
+ * @property {number} maxLng
+ */
 
-export interface ZoneInfo {
-  name: ZoneName
-  lat: number
-  lng: number
-  elev: number
-  color: string
-}
+/** @typedef {'Zone I' | 'Zone II' | 'Zone III'} ZoneName */
 
-export const ZONES: ZoneInfo[] = [
+/**
+ * @typedef {object} ZoneInfo
+ * @property {ZoneName} name
+ * @property {number} lat
+ * @property {number} lng
+ * @property {number} elev
+ * @property {string} color
+ */
+
+/** @type {ZoneInfo[]} */
+export const ZONES = [
   { name: 'Zone I', lat: 12.5096, lng: 124.6674, elev: 6.7, color: '#2f9e6e' },
   { name: 'Zone II', lat: 12.5131, lng: 124.6613, elev: 6.3, color: '#2f6fb6' },
   { name: 'Zone III', lat: 12.5103, lng: 124.6609, elev: 8.3, color: '#d9902b' },
 ]
 
-export const MAP_CENTER: [number, number] = [12.5113, 124.6641]
+/** @type {[number, number]} */
+export const MAP_CENTER = [12.5113, 124.6641]
 
 /**
  * Event `zone` label -> surveyed planting zone. Lived privately inside
  * EventBoundaryEditor; promoted here so MapView's event filter and the boundary
  * editor can never disagree about which zone an event label means.
  */
-export const ZONE_LABEL_TO_NAME: Record<string, ZoneName> = {
+/** @type {Record<string, ZoneName>} */
+export const ZONE_LABEL_TO_NAME = {
   'Zone A – Main Campus': 'Zone I',
   'Zone B – Annex Field': 'Zone III',
   'Zone C – Hillside Reserve': 'Zone II',
 }
 
-/** Reverse lookup, for showing a surveyed zone back as an event label. */
-export function zoneNameToLabel(name: ZoneName): string | null {
+/**
+ * Reverse lookup, for showing a surveyed zone back as an event label.
+ * @param {ZoneName} name
+ * @returns {string | null}
+ */
+export function zoneNameToLabel(name) {
   for (const [label, zone] of Object.entries(ZONE_LABEL_TO_NAME)) if (zone === name) return label
   return null
 }
 
-export const CAMPUS_BOUNDS: VBounds = {
+/** @type {VBounds} */
+export const CAMPUS_BOUNDS = {
   minLat: 12.509,
   minLng: 124.6604,
   maxLat: 12.5136,
@@ -52,11 +63,15 @@ export const CAMPUS_BOUNDS: VBounds = {
 /**
  * Event field boundary — an ordered ring of [lat, lng] vertices.
  * Implicitly closed when drawn/validated (≥ 3 points required).
+ * @typedef {[number, number][]} Boundary
  */
-export type Boundary = [number, number][]
 
-/** Approximate enclosed area (m²) via the shoelace formula on equirectangular coords. */
-export function boundaryArea(boundary: Boundary): number {
+/**
+ * Approximate enclosed area (m²) via the shoelace formula on equirectangular coords.
+ * @param {Boundary} boundary
+ * @returns {number}
+ */
+export function boundaryArea(boundary) {
   if (boundary.length < 3) return 0
   let twice = 0
   for (let i = 0; i < boundary.length; i++) {
@@ -71,8 +86,14 @@ export function boundaryArea(boundary: Boundary): number {
   return degArea * mPerDeg * mPerDeg * lngScale
 }
 
-/** Ray-casting point-in-polygon test — returns true if (lat, lng) is inside the boundary ring. */
-export function pointInBoundary(boundary: Boundary, lat: number, lng: number): boolean {
+/**
+ * Ray-casting point-in-polygon test — returns true if (lat, lng) is inside the boundary ring.
+ * @param {Boundary} boundary
+ * @param {number} lat
+ * @param {number} lng
+ * @returns {boolean}
+ */
+export function pointInBoundary(boundary, lat, lng) {
   if (boundary.length < 3) return false
   let inside = false
   for (let i = 0, j = boundary.length - 1; i < boundary.length; j = i++) {
@@ -88,8 +109,12 @@ export function pointInBoundary(boundary: Boundary, lat: number, lng: number): b
   return inside
 }
 
-/** Bounding box that frames a single zone on the map. */
-export function framingBounds(zoneName: string): VBounds {
+/**
+ * Bounding box that frames a single zone on the map.
+ * @param {string} zoneName
+ * @returns {VBounds}
+ */
+export function framingBounds(zoneName) {
   const zone = ZONES.find(z => zoneName.includes(z.name) || z.name === zoneName)
   if (!zone) return CAMPUS_BOUNDS
   const pad = 0.0012

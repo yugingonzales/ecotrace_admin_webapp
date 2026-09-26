@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
  * Dismiss a popover when the user interacts with anything outside it.
@@ -21,13 +21,14 @@ import { useEffect, useRef, type RefObject } from 'react'
  * Pass every ref that should count as "inside" — the popover *and* its trigger.
  * Including the trigger is what stops a click on the toggle button from
  * dismissing the popover on `pointerdown` and then re-opening it on `click`.
+ *
+ * @param {Array<import('react').RefObject<HTMLElement | null>>} refs Refs to the
+ *   elements considered "inside". Ref *objects*, not elements.
+ * @param {() => void} onOutside
+ * @param {boolean} [active]
+ * @returns {void}
  */
-export function useOutsideClick(
-  /** Refs to the elements considered "inside". Ref *objects*, not elements. */
-  refs: Array<RefObject<HTMLElement | null>>,
-  onOutside: () => void,
-  active = true,
-): void {
+export function useOutsideClick(refs, onOutside, active = true) {
   // Held in a ref so callers can pass an inline arrow without re-registering.
   const latest = useRef(onOutside)
   useEffect(() => {
@@ -37,7 +38,8 @@ export function useOutsideClick(
   useEffect(() => {
     if (!active) return
 
-    const onPointerDown = (e: PointerEvent) => {
+    /** @param {PointerEvent} e */
+    const onPointerDown = e => {
       const target = e.target
       if (!(target instanceof Node)) return
       // The refs are stable objects for the component's lifetime, so capturing
