@@ -10,31 +10,37 @@ import {
   LayersControl, useMap, useMapEvents,
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { CAMPUS_BOUNDS, ZONE_LABEL_TO_NAME, framingBounds, boundaryArea, type Boundary } from '../../lib/site'
+import { CAMPUS_BOUNDS, ZONE_LABEL_TO_NAME, framingBounds, boundaryArea } from '../../lib/site'
 import MapAutoResize from './MapAutoResize'
+
+/** @typedef {import('../../lib/site.js').Boundary} Boundary */
 
 const MAX_POINTS = 30
 
-interface Props {
-  zoneLabel?: string
-  boundary: Boundary
-  onChange: (b: Boundary) => void
-  height?: number
-  expanded?: boolean
-  onExpand?: () => void
-  onClose?: () => void
-}
+/**
+ * @typedef {object} Props
+ * @property {string} [zoneLabel]
+ * @property {Boundary} boundary
+ * @property {(b: Boundary) => void} onChange
+ * @property {number} [height]
+ * @property {boolean} [expanded]
+ * @property {() => void} [onExpand]
+ * @property {() => void} [onClose]
+ */
 
-const pt = (lat: number, lng: number): [number, number] => [lat, lng]
+/** @param {number} lat @param {number} lng @returns {[number, number]} */
+const pt = (lat, lng) => [lat, lng]
 
-function formatArea(m2: number): string {
+/** @param {number} m2 @returns {string} */
+function formatArea(m2) {
   return m2 >= 10_000 ? `${(m2 / 10_000).toFixed(2)} ha` : `${Math.round(m2).toLocaleString()} m²`
 }
 
-function DrawClicks({ onAdd }: { onAdd: (p: [number, number]) => void }) {
+/** @param {{ onAdd: (p: [number, number]) => void }} props */
+function DrawClicks({ onAdd }) {
   useMapEvents({
     click(e) {
-      const t = (e.originalEvent?.target as HTMLElement | null)
+      const t = /** @type {HTMLElement | null} */ (e.originalEvent?.target)
       if (t && (t.closest('.leaflet-marker-icon') || t.closest('.cc-boundary-grip'))) return
       onAdd(pt(e.latlng.lat, e.latlng.lng))
     },
@@ -42,7 +48,8 @@ function DrawClicks({ onAdd }: { onAdd: (p: [number, number]) => void }) {
   return null
 }
 
-function FitToBoundary({ boundary }: { boundary: Boundary }) {
+/** @param {{ boundary: Boundary }} props */
+function FitToBoundary({ boundary }) {
   const map = useMap()
   const count = boundary.length
   useEffect(() => {
@@ -63,7 +70,12 @@ function FitToBoundary({ boundary }: { boundary: Boundary }) {
 const EDGE_MARGIN = 40 // px from the map edge before auto-pan kicks in
 const MAX_PAN = 14     // px panned per move frame at full edge pressure
 
-function panNearViewportEdge(map: L.Map, clientX: number, clientY: number) {
+/**
+ * @param {L.Map} map
+ * @param {number} clientX
+ * @param {number} clientY
+ */
+function panNearViewportEdge(map, clientX, clientY) {
   const rect = map.getContainer().getBoundingClientRect()
   const x = clientX - rect.left
   const y = clientY - rect.top
@@ -83,6 +95,16 @@ function panNearViewportEdge(map: L.Map, clientX: number, clientY: number) {
   if (dx !== 0 || dy !== 0) map.panBy(L.point(dx, dy), { animate: false })
 }
 
+/**
+ * @param {object} props
+ * @param {number} props.index
+ * @param {number} props.x
+ * @param {number} props.y
+ * @param {import('react').MutableRefObject<L.Map | null>} props.mapRef
+ * @param {boolean} props.editing
+ * @param {(i: number, lat: number, lng: number) => void} props.onMove
+ * @param {(i: number) => void} props.onDelete
+ */
 function DraggableVertex({
   index,
   x,
@@ -91,18 +113,11 @@ function DraggableVertex({
   editing,
   onMove,
   onDelete,
-}: {
-  index: number
-  x: number
-  y: number
-  mapRef: React.MutableRefObject<L.Map | null>
-  editing: boolean
-  onMove: (i: number, lat: number, lng: number) => void
-  onDelete: (i: number) => void
 }) {
   const draggingRef = useRef(false)
 
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  /** @param {import('react').PointerEvent<HTMLDivElement>} e */
+  const onPointerDown = e => {
     if (!editing) return
     const map = mapRef.current
     if (!map) return
@@ -110,13 +125,15 @@ function DraggableVertex({
     e.stopPropagation()
     draggingRef.current = true
 
-    const handlePointerMove = (ev: PointerEvent) => {
+    /** @param {PointerEvent} ev */
+    const handlePointerMove = ev => {
       if (!draggingRef.current || !mapRef.current) return
       panNearViewportEdge(mapRef.current, ev.clientX, ev.clientY)
       const p = mapRef.current.containerPointToLatLng(mapRef.current.mouseEventToContainerPoint(ev))
       onMove(index, p.lat, p.lng)
     }
-    const handlePointerUp = (ev: PointerEvent) => {
+    /** @param {PointerEvent} ev */
+    const handlePointerUp = ev => {
       if (!draggingRef.current || !mapRef.current) return
       draggingRef.current = false
       const p = mapRef.current.containerPointToLatLng(mapRef.current.mouseEventToContainerPoint(ev))
@@ -148,22 +165,24 @@ function DraggableVertex({
 
 // Renders each vertex as an absolutely-positioned grip over the map, keeping
 // positions in sync whenever the map pans or zooms.
+/**
+ * @param {object} props
+ * @param {Boundary} props.points
+ * @param {import('react').MutableRefObject<L.Map | null>} props.mapRef
+ * @param {boolean} props.editing
+ * @param {(i: number, lat: number, lng: number) => void} props.onMove
+ * @param {(i: number) => void} props.onDelete
+ */
 function GripOverlay({
   points,
   mapRef,
   editing,
   onMove,
   onDelete,
-}: {
-  points: Boundary
-  mapRef: React.MutableRefObject<L.Map | null>
-  editing: boolean
-  onMove: (i: number, lat: number, lng: number) => void
-  onDelete: (i: number) => void
 }) {
   const map = useMap()
   useEffect(() => { mapRef.current = map }, [map, mapRef])
-  const [pts, setPts] = useState<{ i: number; x: number; y: number }[]>([])
+  const [pts, setPts] = useState(/** @type {{ i: number, x: number, y: number }[]} */ ([]))
 
   // Keep the latest points in a ref so the event-driven `place` callback
   // (registered once by useMapEvents) never reads a stale closure.
@@ -171,6 +190,7 @@ function GripOverlay({
   pointsRef.current = points
 
   const place = () => {
+    /** @type {{ i: number, x: number, y: number }[]} */
     const next = pointsRef.current.map(([lat, lng], i) => {
       const p = map.latLngToContainerPoint(L.latLng(lat, lng))
       return { i, x: p.x, y: p.y }
@@ -205,6 +225,7 @@ function GripOverlay({
   )
 }
 
+/** @param {Props} props */
 export default function EventBoundaryEditor({
   zoneLabel,
   boundary,
@@ -213,28 +234,36 @@ export default function EventBoundaryEditor({
   expanded = false,
   onExpand,
   onClose,
-}: Props) {
+}) {
   const editing = expanded
   const [hintDismissed, setHintDismissed] = useState(false)
-  const mapRef = useRef<L.Map | null>(null)
+  const mapRef = useRef(/** @type {L.Map | null} */ (null))
   const bounds = zoneLabel
     ? framingBounds(ZONE_LABEL_TO_NAME[zoneLabel] ?? '')
     : CAMPUS_BOUNDS
-  const center: [number, number] = [
+  /** @type {[number, number]} */
+  const center = [
     (bounds.minLat + bounds.maxLat) / 2,
     (bounds.minLng + bounds.maxLng) / 2,
   ]
   const area = useMemo(() => boundaryArea(boundary), [boundary])
   const closed = boundary.length >= 3
 
-  const add = (p: [number, number]) => {
+  /** @param {[number, number]} p */
+  const add = p => {
     if (boundary.length >= MAX_POINTS) return
     onChange([...boundary, p])
   }
-  const move = (i: number, lat: number, lng: number) => {
+  /**
+   * @param {number} i
+   * @param {number} lat
+   * @param {number} lng
+   */
+  const move = (i, lat, lng) => {
     onChange(boundary.map((v, j) => (j === i ? pt(lat, lng) : v)))
   }
-  const remove = (i: number) => {
+  /** @param {number} i */
+  const remove = i => {
     if (boundary.length <= 3) return
     onChange(boundary.filter((_, j) => j !== i))
   }

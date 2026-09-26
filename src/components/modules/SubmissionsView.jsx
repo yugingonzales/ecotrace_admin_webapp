@@ -1,24 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  usePortal,
-  type SubStatus,
-  type SubType,
-  type Submission,
-} from '../../lib/store'
+import { usePortal } from '../../lib/store'
 import { useEscapeToClose, useScrollLock } from '../../lib/useEscapeToClose'
+
+/** @typedef {import('../../lib/store.js').SubStatus} SubStatus */
+/** @typedef {import('../../lib/store.js').SubType} SubType */
+/** @typedef {import('../../lib/store.js').Submission} Submission */
 
 /** Rows per page. The table previously rendered a hard-coded "1 / 2" pager whose
  *  Prev/Next buttons did nothing at all. */
 const PAGE_SIZE = 5
 
-const statusStyle: Record<SubStatus, string> = {
+/** @type {Record<SubStatus, string>} */
+const statusStyle = {
   pending: 'badge-warning',
   approved: 'badge-accent',
   declined: 'badge-danger',
   resubmit: 'badge-info',
 }
 
-const statusLabel: Record<SubStatus, string> = {
+/** @type {Record<SubStatus, string>} */
+const statusLabel = {
   pending: 'Pending',
   approved: 'Approved',
   declined: 'Declined',
@@ -34,7 +35,13 @@ const declineReasons = [
   'Invalid Timestamp',
 ]
 
-function DeclineModal({ count, onClose, onConfirm }: { count: number; onClose: () => void; onConfirm: (reason: string, note: string) => void }) {
+/**
+ * @param {object} props
+ * @param {number} props.count
+ * @param {() => void} props.onClose
+ * @param {(reason: string, note: string) => void} props.onConfirm
+ */
+function DeclineModal({ count, onClose, onConfirm }) {
   const [reason, setReason] = useState('')
   const [note, setNote] = useState('')
 
@@ -99,18 +106,20 @@ function DeclineModal({ count, onClose, onConfirm }: { count: number; onClose: (
  * call the same store reducers the batch bar uses, so a single approve writes
  * the same audit row, toast and notification a batch approve of one would.
  */
+/**
+ * @param {object} props
+ * @param {Submission} props.sub
+ * @param {() => void} props.onClose
+ * @param {() => void} props.onApprove
+ * @param {() => void} props.onDecline
+ * @param {() => void} props.onResubmit
+ */
 function DetailDrawer({
   sub,
   onClose,
   onApprove,
   onDecline,
   onResubmit,
-}: {
-  sub: Submission
-  onClose: () => void
-  onApprove: () => void
-  onDecline: () => void
-  onResubmit: () => void
 }) {
   useEscapeToClose(onClose)
   useScrollLock()
@@ -192,19 +201,21 @@ export default function SubmissionsView() {
     focus,
     clearFocus,
   } = usePortal()
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [filter, setFilter] = useState<'all' | SubType>('all')
-  const [statusFilter, setStatusFilter] = useState<'all' | SubStatus>('all')
+  // The generics are pinned by casting the argument. A `useState<T>(...)` written
+  // here would be parsed as comparison operators by esbuild, not as a generic.
+  const [selected, setSelected] = useState(/** @type {Set<string>} */ (new Set()))
+  const [filter, setFilter] = useState(/** @type {'all' | SubType} */ ('all'))
+  const [statusFilter, setStatusFilter] = useState(/** @type {'all' | SubStatus} */ ('all'))
   const [eventFilter, setEventFilter] = useState('all')
   const [search, setSearch] = useState('')
   // Which ids the decline dialog is about. Kept explicit rather than inferred
   // from `selected`, so the drawer's Decline button can never accidentally act
   // on an unrelated selection.
-  const [declineTarget, setDeclineTarget] = useState<string[] | null>(null)
+  const [declineTarget, setDeclineTarget] = useState(/** @type {string[] | null} */ (null))
   // Stored as an id, never as the row object: after an action the row object in
   // the store is a new object, and a drawer holding the old one would keep
   // rendering the stale "Pending" badge and its action buttons.
-  const [drawerId, setDrawerId] = useState<string | null>(null)
+  const [drawerId, setDrawerId] = useState(/** @type {string | null} */ (null))
   const [page, setPage] = useState(1)
 
   const drawerSub = drawerId ? (submissions.find(s => s.id === drawerId) ?? null) : null
@@ -269,7 +280,8 @@ export default function SubmissionsView() {
     setSelected(allFilteredSelected ? new Set() : new Set(filtered.map(s => s.id)))
   }
 
-  const toggleOne = (id: string) => {
+  /** @param {string} id */
+  const toggleOne = id => {
     const next = new Set(selected)
     if (next.has(id)) next.delete(id)
     else next.add(id)
@@ -281,7 +293,11 @@ export default function SubmissionsView() {
     setSelected(new Set())
   }
 
-  const batchDecline = (reason: string, note: string) => {
+  /**
+   * @param {string} reason
+   * @param {string} note
+   */
+  const batchDecline = (reason, note) => {
     if (!declineTarget) return
     storeActions.declineSubmissions(declineTarget, reason, note)
     setSelected(new Set())
@@ -347,7 +363,7 @@ export default function SubmissionsView() {
         </div>
 
         <div className="flex rounded-lg border overflow-hidden text-xs" style={{ borderColor: 'var(--border)' }}>
-          {([['all', 'All'], ['verification', 'Verifications'], ['incident', 'Incidents']] as const).map(([v, l]) => (
+          {/** @type {const} */ ([['all', 'All'], ['verification', 'Verifications'], ['incident', 'Incidents']]).map(([v, l]) => (
             <button
               key={v}
               onClick={() => setFilter(v)}
@@ -363,7 +379,7 @@ export default function SubmissionsView() {
           className="select text-xs"
           style={{ width: 'auto' }}
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value as 'all' | SubStatus)}
+          onChange={e => setStatusFilter(/** @type {'all' | SubStatus} */ (e.target.value))}
         >
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
