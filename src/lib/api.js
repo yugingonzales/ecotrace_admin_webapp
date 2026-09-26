@@ -43,13 +43,27 @@
 
 // ── Configuration ───────────────────────────────────────────────────────────
 
+// Vite statically replaces the literal text `import.meta.env.VITE_*` at build
+// time, so these need no declaration file. src/vite-env.d.ts — the last
+// TypeScript file in the repo — is gone; the type of each key is spelled out
+// inline instead.
+//
+// Do NOT hoist `import.meta.env` into a local `const env` and then read
+// `env.VITE_*`: Vite only rewrites the fully-qualified literal, so that form
+// silently embeds the entire env object in the bundle (+2.5 kB, measured).
+
 /** Master switch. Flipping this off guarantees zero requests are dispatched. */
-export const API_ENABLED = import.meta.env.VITE_ENABLE_API === 'true'
+export const API_ENABLED =
+  /** @type {string | undefined} */ (import.meta.env.VITE_ENABLE_API) === 'true'
 
 /** Origin-relative by default so the Vite dev proxy (or a reverse proxy) handles routing. */
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/+$/, '')
+export const API_BASE_URL = (
+  /** @type {string | undefined} */ (import.meta.env.VITE_API_BASE_URL) ?? '/api'
+).replace(/\/+$/, '')
 
-const TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 15_000)
+const TIMEOUT_MS = Number(
+  /** @type {string | undefined} */ (import.meta.env.VITE_API_TIMEOUT_MS) ?? 15_000,
+)
 
 /** Key used to persist the JWT. Kept separate from the legacy `ecotrace_session`. */
 export const TOKEN_STORAGE_KEY = 'ecotrace_admin_token'

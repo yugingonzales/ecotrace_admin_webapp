@@ -7,7 +7,7 @@
 **Status:** A **read-only** Node/MariaDB REST API exists (`server/`, Express-free, on
 :3000) and `MapView` reads from it via `GET /api/plants`. It is read-only **by
 design** — there is no write path, so approvals, declines and event edits are
-persisted in a browser-local store (`src/lib/store.tsx`) and are **not** yet
+persisted in a browser-local store (`src/lib/store.jsx`) and are **not** yet
 written to MariaDB.
 
 ---
@@ -118,7 +118,7 @@ progress, which is exactly what the Overview and Analytics modules need.
 - `tr_validate_event_dates` duplicates the `chk_date_range` constraint at the
   trigger level — belt-and-braces, harmless.
 
-All ENUM values in `src/lib/types.ts` were copied verbatim from these `.frm`
+All ENUM values in `src/lib/types.js` were copied verbatim from these `.frm`
 definitions. None were invented.
 
 ---
@@ -131,7 +131,7 @@ database cannot store.
 ### Gap 1 — No staff table and no `role` column *(blocking)*
 
 Both apps model **staff** with three roles: `intern`, `volunteer`, `staff`.
-`SubmissionsView.tsx` carries `staffId: 'STF-001'`, `staffType: 'Volunteer'` on
+`SubmissionsView.jsx` carries `staffId: 'STF-001'`, `staffType: 'Volunteer'` on
 every row. The database has **no users table and no `role` column anywhere** —
 only `ecotrace_students`, which is a different thing entirely.
 
@@ -146,7 +146,7 @@ separate sequence from `student_id`. See §8.5 for the proposed resolution.
 ### Gap 2 — No incidents table
 
 `Overview.tsx` displays a hardcoded **"12 Incident Reports"**. The Flutter app
-has a dedicated `incident_report.dart` screen. `SubmissionsView.tsx` has an
+has a dedicated `incident_report.dart` screen. `SubmissionsView.jsx` has an
 `incident` submission type with `incidentType` values
 (`Dead / Uprooted Tree`, `Pest Infestation`, `Location Mismatch`).
 
@@ -183,7 +183,7 @@ Guessing here would silently corrupt the headline metric.
 
 ## 5. Data bug fixed: submission coordinates
 
-**The bug.** `SubmissionsView.tsx` seeded all 8 submissions at
+**The bug.** `SubmissionsView.jsx` seeded all 8 submissions at
 `14.65xx N / 121.04xx E` — that is **Quezon City, ~600 km from the campus**.
 Every other coordinate source in the project uses the UEP Catarman, Northern
 Samar campus: `lib/trees.ts` (12.50xx / 124.66xx), `lib/site.ts` (zone
@@ -222,7 +222,7 @@ mechanical rename, because zone names may be user-facing labels.
 
 ## 6. Security posture (must be fixed before any deployment)
 
-`Login.tsx` is a prototype-grade auth flow and is **not safe to ship**:
+`Login.jsx` is a prototype-grade auth flow and is **not safe to ship**:
 
 - **Hardcoded credentials** — `admin@school.edu` / `admin123` sit in the source.
 - **Plaintext passwords at rest** — accounts are persisted to `localStorage`
@@ -234,7 +234,7 @@ By contrast, the database is already built correctly for this: it has
 `password_hash` on `ecotrace_students` plus a `tr_update_student_login`
 trigger to maintain `last_login_at`. **The database model is right; the admin
 portal's client-side auth is what needs replacing.** When the API lands, this
-component should be deleted and rewired to `login()` in `src/lib/api.ts`.
+component should be deleted and rewired to `login()` in `src/lib/api.js`.
 
 ### 6.1 ID mismatch
 
@@ -265,7 +265,7 @@ step, or the mock IDs should be retired in favour of numeric IDs.
 
 ### 7.1 Why the API client is inert
 
-`src/lib/api.ts` defines the full typed contract but **dispatches no requests**
+`src/lib/api.js` defines the full typed contract but **dispatches no requests**
 while `VITE_ENABLE_API` is not `'true'` — `request()` throws `ApiError` with
 status `0` before reaching `fetch`. This is deliberate:
 
@@ -274,7 +274,7 @@ status `0` before reaching `fetch`. This is deliberate:
 3. The contract can be reviewed and agreed on independently of server work.
 
 Once the API is live, migrating a module is a matter of replacing its mock
-array with the matching helper in `api.ts` — no other change to that component.
+array with the matching helper in `api.js` — no other change to that component.
 
 ---
 
@@ -288,7 +288,7 @@ array with the matching helper in `api.ts` — no other change to that component
 | Framework | Express 5 | Current stable; async error propagation |
 | DB driver | `mysql2` (promise pool) | Native prepared statements, avoids SQL injection |
 | Auth | `jsonwebtoken` + `bcryptjs` | `bcryptjs` is pure JS — no native build step |
-| Validation | `zod` | Schema shared with the TS types in `src/lib/types.ts` |
+| Validation | `zod` | Schema shared with the TS types in `src/lib/types.js` |
 | Port | **3000** | Admin dev server already owns 8443 |
 
 ### 8.2 Request flow
@@ -322,14 +322,14 @@ path at nginx/IIS or set `VITE_API_BASE_URL` to an absolute origin.
 3. Client stores it in `localStorage` under `ecotrace_admin_token` (a **separate
    key from the legacy `ecotrace_admin_accounts`**, which must be purged on first
    live login).
-4. Every request sends `Authorization: Bearer <token>`; `api.ts` does this
+4. Every request sends `Authorization: Bearer <token>`; `api.js` does this
    automatically.
 5. `tr_update_student_login` maintains `last_login_at` on success.
 6. On 401, the client clears the token and returns to the login screen.
 
 ### 8.4 REST route mapping
 
-Backed by `src/lib/api.ts`. Every route is implemented server-side; none are
+Backed by `src/lib/api.js`. Every route is implemented server-side; none are
 called by the app yet.
 
 | Method | Route | Backing table / view | Helper |
@@ -467,7 +467,7 @@ the code is ambiguous or the data would be silently wrong.
 3. **Start MySQL** (`net start MySQL`) and apply migrations from §8.5 once approved.
 4. **Implement `/api/auth/login` and `/api/plants`** — the two smallest vertical
    slices that prove the stack end to end.
-5. **Swap `Login.tsx` to `login()`** and delete the plaintext
+5. **Swap `Login.jsx` to `login()`** and delete the plaintext
    `ecotrace_admin_accounts` localStorage path.
 6. **Migrate Overview → `getOverviewStats()`**, verifying numbers against
    `vw_event_progress` and `vw_student_progress`.
@@ -570,7 +570,7 @@ visual behaviour remain manual.
 | 2026-09-26 | Made every notification row clickable, with chevron + tooltip | `src/App.tsx` |
 | 2026-09-26 | Routed focus into the submissions drawer / filters | `src/components/modules/SubmissionsView.tsx` |
 | 2026-09-26 | Added notification-target + deep-link tests (14) | `src/lib/store.test.ts`, `src/lib/notificationTargets.test.tsx` |
-| 2026-09-26 | TS→JS migration **phase 1 + spike**: `tsconfig.json`→`jsconfig.json` (`checkJs`), `vite.config`/`vitest.config`/`trees` renamed to `.js`, both `server/` text-parsers made extension-agnostic | §11 |
+| 2026-09-26 | TS→JS migration **complete**: all 28 `src/` files converted to JSDoc, TypeScript removed entirely (no `.ts`/`.tsx` in the repo), 3 hardcoded-extension readers made extension-agnostic | §11 |
 
 
 **Verification:** `npx tsc --noEmit` → exit 0. `npx vite build` → success
@@ -601,9 +601,10 @@ state instead of hardcoded arrays.*
 
 ## 11. TypeScript -> JavaScript (JSDoc) migration
 
-**Status: IN PROGRESS.** Phase 1 (tooling) and the Phase 2 spike (one
-representative module) are complete and verified. The remaining 26 `src/`
-modules are not yet converted. Nothing is committed yet.
+**Status: COMPLETE.** All 28 `src/` files are converted. The repository now
+contains **no `.ts` or `.tsx` file anywhere**, and TypeScript is no longer a
+dependency. The `npm run typecheck` script has been removed along with it;
+see §11.7 for what that costs and why it was accepted.
 
 ### 11.1 Why
 
@@ -611,31 +612,39 @@ The instructor requires JavaScript rather than TypeScript. This is an
 external, non-negotiable constraint, not a technical preference, so the
 migration proceeds. The goal became **comply fully without discarding the
 guarantees that were load-bearing** - specifically the schema mirror in
-`src/lib/types.ts` and the compile-time checks on call sites.
+`src/lib/types.js` and the compile-time checks on call sites.
 
 ### 11.2 Approach: JSDoc, not annotation deletion
 
-`tsconfig.json` is replaced by `jsconfig.json` with `allowJs` + `checkJs`.
-Sources are plain `.js`/`.jsx` with JSDoc annotations; the TypeScript
-compiler stays as a **devDependency only** and is run via
-`npm run typecheck` (`tsc -p jsconfig.json --noEmit`). Vite/esbuild already
-compiled the app without `tsc`, so the build path is unchanged.
+Sources are plain `.js`/`.jsx` carrying JSDoc annotations. The mapping used
+throughout was mechanical:
 
-`jsconfig.json` mirrors the old `tsconfig.json` options exactly. It
-deliberately does **not** add `noUnusedLocals`/`noUnusedParameters`: a
-baseline worktree at `4f71968` typechecked clean, and enabling those flags
-introduced two `TS6133` errors in `store.test.ts` that were never errors
-before. Matching the original flag set keeps the gate meaningful.
-
-### 11.3 Completed so far
-
-| File | Notes |
+| TypeScript | JSDoc |
 | --- | --- |
-| `jsconfig.json` | new; replaces `tsconfig.json` (deleted) |
-| `package.json` | `typecheck` now `tsc -p jsconfig.json --noEmit` |
-| `vite.config.ts` -> `.js` | 374 lines, 3 Vite plugins; needed `@returns {Plugin}` restored on each factory so Vite's hook types still contextually type the parameters |
-| `vitest.config.ts` -> `.js` | test glob narrowed to `src/**/*.test.{js,jsx}` |
-| `src/lib/trees.ts` -> `.js` | 23 data rows left byte-identical on purpose |
+| `interface X { a: string }` | `@typedef {object} X` + `@property {string} a` |
+| `type X = 'a' \| 'b'` | `@typedef {'a' \| 'b'} X` |
+| `(a: A): R` | `@param {A} a` + `@returns {R}` |
+| `foo as T` / `x!` / `<T>(y)` | `/** @type {T} */ (x)` |
+| `interface B extends A` | `@typedef {A & {...}}` |
+| `import type { T }` | `@typedef {import('./m.js').T} T` |
+
+`tsconfig.json` was replaced by `jsconfig.json`. While the migration was in
+flight that file carried `checkJs` and `npm run typecheck` ran
+`tsc -p jsconfig.json --noEmit`; §11.7 records why both were then removed.
+
+### 11.3 What was converted
+
+All 28 files. Grouped by the construct that made them non-mechanical:
+
+| Group | Files | Note |
+| --- | --- | --- |
+| Tooling | `vite.config`, `vitest.config`, `trees` | `vite.config.js` needed `@returns {Plugin}` restored on each factory, else every Vite hook param went implicit-`any` |
+| Leaf utilities | `csv`, `site`, `useEscapeToClose`, `useOutsideClick` (+3 tests) | plain annotation strip |
+| Schema mirror | `types.ts` -> `types.js` | 7 ENUM unions re-verified against the `.frm` files, not trusted from the old comment |
+| API + data | `api`, `usePlants` | `ApiError` parameter properties have no JS equivalent |
+| Components | `main`, `Sidebar`, `Login`, `ToastViewport`, `MapAutoResize`, `App`, `Overview`, `MapView`, `Analytics`, `AuditLogs`, `SubmissionsView`, `EventManagement`, `EventBoundaryEditor` | |
+| State | `store.tsx` -> `store.jsx` (830 lines) | 15 exported types; done last, once types/api/csv were settled |
+| Tests | `store.test`, `notificationTargets.test` (+3 already converted) | |
 
 **`vite.config.js` needed more than a mechanical strip.** Removing the
 `: Plugin` return annotations silently de-typed every Vite hook parameter
@@ -643,7 +652,7 @@ before. Matching the original flag set keeps the gate meaningful.
 `@returns {Plugin}` on each factory reinstates contextual typing, which is
 the JSDoc equivalent of the original return type.
 
-### 11.4 A cross-tier coupling the migration exposed
+### 11.4 Three places that read source files by hardcoded extension
 
 `src/lib/trees.*` is parsed **as text** by two files in `server/`, both of
 which hardcoded the string `trees.ts`:
@@ -661,21 +670,80 @@ their original field order and quoting because both regexes depend on it.
 reproduces the SQL with exactly one changed line - the `-- Source:` header,
 now `trees.js`. All 23 data rows and the status-count line are unchanged.
 
-### 11.5 Verification of the current partial state
+The same class of coupling turned up a second time, inside the test suite.
+`src/lib/mapStacking.test.js` reads `MapView.tsx`, `EventBoundaryEditor.tsx`
+and `App.tsx` to assert the map stacking contract. Renaming `MapView` made the
+suite fail with `ENOENT` and 2 of its 8 tests silently vanish - a test result
+that looks like a stacking regression but is really an extension problem. A
+`readSource()` helper now resolves an extension-less path, and the `MAP_FILES`
+list is extension-free, so a rename in either direction is a no-op.
 
-- `npm run typecheck` - **clean, 0 errors**
-- `npx vitest run` - **58/58** (run with a temporary broad `*.test.{js,jsx,ts,tsx}`
-  glob, since 5 test files are still `.ts`/`.tsx`; the committed
-  `vitest.config.js` keeps the narrow `.js`/`.jsx` glob for the finished state)
-- `npx vite build` - **859.42 kB / 247.96 kB gz, CSS 42.35 kB** - byte-identical
-  to the pre-migration baseline
+`index.html` was a third: it hardcoded `/src/main.tsx` as the entry script,
+which would have shipped a build whose entry could not resolve.
+
+### 11.5 Verification of the final state
+
+- `npx vitest run` - **58/58** across 5 files
 - `server/ npm test` - **13/13**
+- `npx vite build` - **859.49 kB / 248.00 kB gz, CSS 42.35 kB**
+- Seed generator - **23 trees**, reproduces the committed SQL byte-for-byte
+- `Get-ChildItem -Recurse '*.ts','*.tsx'` outside `node_modules` - **none**
 
-### 11.6 Known cost of this approach
+The build is 0.07 kB above the 859.42 kB pre-migration baseline. That delta
+is deliberate and was isolated: `main.jsx` used to assert `!` on
+`document.getElementById('root')`, and the assertion became a real `throw`
+naming the missing mount point. Rebuilding with a plain cast instead returns
+exactly 859.43 kB, confirming the error string is the whole difference.
 
-The discriminated `NotificationTarget` union and the required `target`
-parameter on `pushNotification` were compile-time guarantees. Under JSDoc
-they remain editor hints and are still checked by `npm run typecheck`, but
-they are no longer enforced by the **build**. If a build-time guard is
-wanted back, an ESLint rule is the way - deliberately not added here.
+**The types were mutation-checked while the checker still existed**, because
+a green typecheck that checks nothing is worse than no typecheck:
+
+- `PlantStatus` rejected a value outside the union; a `Plant` with a mistyped
+  `plant_id` and a `Paginated` envelope missing `items` were both rejected;
+  a valid `AuthSession` was accepted (proving `Omit<Student,'password_hash'>`
+  still strips the credential).
+- Mis-declaring `me()`'s return type **failed**, after it had silently passed
+  in an earlier draft - see §11.6.
+
+### 11.6 Two bugs the migration nearly shipped
+
+**A return type that was decorative.** The old code bound the generic at each
+call site (`request<StudentPublic>('/auth/me')`). JSDoc cannot express a
+type argument, so a bare `request(...)` infers `T` as `unknown` - and
+`Promise<unknown>` is assignable to *any* declared return type. The declared
+types would have been unenforced while still looking enforced. Each of the 14
+endpoints now casts its result, and a deliberate mis-declaration is caught
+with `TS2322`.
+
+**A generic parsed as arithmetic.** `useState<Set<string>>(new Set())` in a
+`.jsx` file is not a generic call; it is a chain of comparison operators, and
+it type-checks as one. The build survived it only because the malformed
+expression is dead code. It appeared in `SubmissionsView`, `App` (`useRef`),
+and `EventManagement` - argument casts pin the type instead.
+
+A third, cheaper one: hoisting `import.meta.env` into a local `const env` and
+reading `env.VITE_*` defeats Vite's static replacement and embeds the entire
+env object (**+2.5 kB, measured**). `api.js` now keeps the fully-qualified
+literal and casts inline, with a comment saying why.
+
+### 11.7 The cost of going strict, stated plainly
+
+The instructor's ban was read strictly: **no TypeScript at all**, tooling
+included. So `src/vite-env.d.ts` is deleted (its 3 `VITE_*` keys are now cast
+inline in `api.js`), the `typescript` devDependency is removed,
+`checkJs`/`strict`/`noEmit` are dropped from `jsconfig.json`, and
+`npm run typecheck` no longer exists. `jsconfig.json` is kept purely as
+editor configuration. `npm run verify` (`test && build`) is the gate.
+
+**What is genuinely lost:** there is no longer any automated check that a
+`PlantStatus` literal, a `NotificationTarget` arm, or an API return type is
+correct. The JSDoc is still in the source and still documents every one of
+those contracts, and an editor with `checkJs` switched on will enforce them
+again - but nothing in the build or the test run will catch a violation.
+The 58 tests are the only automated guard that remains.
+
+This was a deliberate trade, made after the alternative (keep `checkJs`) was
+put to the instructor's representative. It is the one place where the
+migration reduced a safety net, and it is recorded here so the trade can be
+reversed if the reading of "no TypeScript" turns out to mean source files only.
 
