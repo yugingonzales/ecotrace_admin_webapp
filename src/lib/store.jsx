@@ -39,75 +39,76 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type ReactNode,
 } from 'react'
-import type { Boundary } from './site'
+
+/** @typedef {import('react').ReactNode} ReactNode */
+/** @typedef {import('./site.js').Boundary} Boundary */
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type SubType = 'verification' | 'incident'
-export type SubStatus = 'pending' | 'approved' | 'declined' | 'resubmit'
-export type NotifType = 'info' | 'warning' | 'error' | 'success'
-export type EventStatusKey = 'active' | 'completed' | 'draft'
+/** @typedef {'verification' | 'incident'} SubType */
+/** @typedef {'pending' | 'approved' | 'declined' | 'resubmit'} SubStatus */
+/** @typedef {'info' | 'warning' | 'error' | 'success'} NotifType */
+/** @typedef {'active' | 'completed' | 'draft'} EventStatusKey */
 
-export interface Submission {
-  id: string
-  staffName: string
-  staffId: string
-  staffType: string
-  treeTag: string
-  species: string
-  type: SubType
-  status: SubStatus
-  event: string
-  /** Display string, e.g. 'Apr 28, 2026 09:14'. */
-  date: string
-  lat: string
-  lng: string
-  photo: string
-  incidentType?: string
-  notes?: string
-  /** Set once a decline reason has been recorded. */
-  declineReason?: string
-}
+/**
+ * @typedef {object} Submission
+ * @property {string} id
+ * @property {string} staffName
+ * @property {string} staffId
+ * @property {string} staffType
+ * @property {string} treeTag
+ * @property {string} species
+ * @property {SubType} type
+ * @property {SubStatus} status
+ * @property {string} event
+ * @property {string} date Display string, e.g. 'Apr 28, 2026 09:14'.
+ * @property {string} lat
+ * @property {string} lng
+ * @property {string} photo
+ * @property {string} [incidentType]
+ * @property {string} [notes]
+ * @property {string} [declineReason] Set once a decline reason has been recorded.
+ */
 
-export interface PortalEvent {
-  id: string
-  name: string
-  year: string
-  /** Display strings, e.g. 'Apr 15, 2026'. Derived from ISO on create/extend. */
-  start: string
-  end: string
-  /** ISO (`YYYY-MM-DD`) — the form of `start`/`end` used for date arithmetic. */
-  startIso: string
-  endIso: string
-  quota: number
-  staff: number
-  target: number
-  verified: number
-  pending: number
-  incidents: number
-  zone: string
-  status: EventStatusKey
-  description: string
-  guidelines: string
-  metrics: string[]
-  boundary: Boundary
-}
+/**
+ * @typedef {object} PortalEvent
+ * @property {string} id
+ * @property {string} name
+ * @property {string} year
+ * @property {string} start Display strings, e.g. 'Apr 15, 2026'. Derived from ISO
+ *   on create/extend.
+ * @property {string} end
+ * @property {string} startIso ISO (`YYYY-MM-DD`) — the form of `start`/`end` used
+ *   for date arithmetic.
+ * @property {string} endIso
+ * @property {number} quota
+ * @property {number} staff
+ * @property {number} target
+ * @property {number} verified
+ * @property {number} pending
+ * @property {number} incidents
+ * @property {string} zone
+ * @property {EventStatusKey} status
+ * @property {string} description
+ * @property {string} guidelines
+ * @property {string[]} metrics
+ * @property {Boundary} boundary
+ */
 
-export interface AuditLogEntry {
-  id: string
-  /** `YYYY-MM-DD HH:mm:ss`, matching the MariaDB DATETIME rendering. */
-  time: string
-  admin: string
-  adminId: string
-  action: string
-  detail: string
-  count: number | null
-  module: string
-  /** True when this row came from a bundled fixture rather than a live action. */
-  seeded: boolean
-}
+/**
+ * @typedef {object} AuditLogEntry
+ * @property {string} id
+ * @property {string} time `YYYY-MM-DD HH:mm:ss`, matching the MariaDB DATETIME rendering.
+ * @property {string} admin
+ * @property {string} adminId
+ * @property {string} action
+ * @property {string} detail
+ * @property {number | null} count
+ * @property {string} module
+ * @property {boolean} seeded True when this row came from a bundled fixture rather
+ *   than a live action.
+ */
 
 /**
  * Where a notification takes you when it is clicked.
@@ -120,76 +121,78 @@ export interface AuditLogEntry {
  * `{ module: 'map' }` and `{ module: 'events' }` deliberately carry no focus
  * fields: no pane consumes a tree tag or an event id yet, and promising one here
  * would be a link that lands on the right page without doing what it says.
+ *
+ * @typedef {{ module: 'submissions', status?: SubStatus, type?: SubType, treeTag?: string, event?: string }
+ *   | { module: 'events' }
+ *   | { module: 'map' }
+ *   | { module: Exclude<Module, 'submissions' | 'events' | 'map'> }} NotificationTarget
  */
-export type NotificationTarget =
-  | { module: 'submissions'; status?: SubStatus; type?: SubType; treeTag?: string; event?: string }
-  | { module: 'events' }
-  | { module: 'map' }
-  | { module: Exclude<Module, 'submissions' | 'events' | 'map'> }
 
 /** Target given to rows written before notifications were clickable. */
-export const LEGACY_NOTIFICATION_TARGET: NotificationTarget = { module: 'overview' }
+export const LEGACY_NOTIFICATION_TARGET = /** @type {NotificationTarget} */ ({ module: 'overview' })
 
-/** Work waiting on the admin, derived live — see `attention` on the context. */
-export interface AttentionItem {
-  /** Stable identity for React keys; also the item's dedupe key. */
-  key: string
-  msg: string
-  type: NotifType
-  target: NotificationTarget
-}
+/**
+ * Work waiting on the admin, derived live — see `attention` on the context.
+ * @typedef {object} AttentionItem
+ * @property {string} key Stable identity for React keys; also the item's dedupe key.
+ * @property {string} msg
+ * @property {NotifType} type
+ * @property {NotificationTarget} target
+ */
 
-export interface AppNotification {
-  id: number
-  msg: string
-  type: NotifType
-  time: number
-  read: boolean
-  /**
-   * Optional in the type only because rows written by an older build lack it.
-   * Every new row gets one (`pushNotification` requires it) and `hydrate`
-   * backfills the rest, so in practice no rendered row is without a target.
-   */
-  target?: NotificationTarget
-}
+/**
+ * @typedef {object} AppNotification
+ * @property {number} id
+ * @property {string} msg
+ * @property {NotifType} type
+ * @property {number} time
+ * @property {boolean} read
+ * @property {NotificationTarget} [target] Optional in the type only because rows
+ *   written by an older build lack it. Every new row gets one
+ *   (`pushNotification` requires it) and `hydrate` backfills the rest, so in
+ *   practice no rendered row is without a target.
+ */
 
-export interface ToastMessage {
-  id: number
-  msg: string
-  type: 'success' | 'error'
-}
+/**
+ * @typedef {object} ToastMessage
+ * @property {number} id
+ * @property {string} msg
+ * @property {'success' | 'error'} type
+ */
 
-export interface Actor {
-  name: string
-  email: string
-}
+/**
+ * @typedef {object} Actor
+ * @property {string} name
+ * @property {string} email
+ */
 
-/** What `CreateEventForm` hands to `createEvent`. */
-export interface EventDraft {
-  title: string
-  description: string
-  plantFrom: string
-  plantTo: string
-  quota: string
-  start: string
-  end: string
-  zone: string
-  boundary: Boundary
-  guidelines: string
-  metrics: string[]
-}
+/**
+ * What `CreateEventForm` hands to `createEvent`.
+ * @typedef {object} EventDraft
+ * @property {string} title
+ * @property {string} description
+ * @property {string} plantFrom
+ * @property {string} plantTo
+ * @property {string} quota
+ * @property {string} start
+ * @property {string} end
+ * @property {string} zone
+ * @property {Boundary} boundary
+ * @property {string} guidelines
+ * @property {string[]} metrics
+ */
 
-export interface StoreSnapshot {
-  submissions: Submission[]
-  events: PortalEvent[]
-  logs: AuditLogEntry[]
-  notifications: AppNotification[]
-  /** Ephemeral — deliberately NOT persisted. */
-  toasts: ToastMessage[]
-  actor: Actor | null
-  /** How many extra historical pages `loadOlderLogs` has pulled in. */
-  olderPages: number
-}
+/**
+ * @typedef {object} StoreSnapshot
+ * @property {Submission[]} submissions
+ * @property {PortalEvent[]} events
+ * @property {AuditLogEntry[]} logs
+ * @property {AppNotification[]} notifications
+ * @property {ToastMessage[]} toasts Ephemeral — deliberately NOT persisted.
+ * @property {Actor | null} actor
+ * @property {number} olderPages How many extra historical pages `loadOlderLogs`
+ *   has pulled in.
+ */
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 // Moved here from the modules so the store owns hydration. A module can no longer
@@ -198,7 +201,8 @@ export interface StoreSnapshot {
 /** Coordinates are UEP Catarman, Northern Samar (12.50xx N / 124.66xx E) and are
  *  derived from the matching treeTag entries in `lib/trees.ts` so that every
  *  submission resolves to the same point the map layer renders. */
-const SEED_SUBMISSIONS: Submission[] = [
+/** @type {Submission[]} */
+const SEED_SUBMISSIONS = [
   { id: 'SUB-4421', staffName: 'Juan Santos', staffId: 'STF-001', staffType: 'Volunteer', treeTag: 'TRE-0892', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 09:14', lat: '12.5101', lng: '124.6679', photo: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=200&fit=crop&auto=format', notes: 'Tree is healthy, new growth visible.' },
   { id: 'SUB-4420', staffName: 'Maria Reyes', staffId: 'STF-002', staffType: 'Intern', treeTag: 'TRE-0567', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 08:58', lat: '12.5098', lng: '124.6681', photo: 'https://images.unsplash.com/photo-1503785640985-f62e3aeee448?w=300&h=200&fit=crop&auto=format', incidentType: 'Dead / Uprooted Tree', notes: 'Tree has been uprooted, possibly by recent storm.' },
   { id: 'SUB-4419', staffName: 'Carlo Diaz', staffId: 'STF-003', staffType: 'Staff', treeTag: 'TRE-1204', species: 'Ipil (Intsia bijuga)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 16:31', lat: '12.5092', lng: '124.6677', photo: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=300&h=200&fit=crop&auto=format' },
@@ -209,7 +213,8 @@ const SEED_SUBMISSIONS: Submission[] = [
   { id: 'SUB-4414', staffName: 'Lena Bautista', staffId: 'STF-008', staffType: 'Intern', treeTag: 'TRE-0950', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 26, 2026 09:33', lat: '12.5128', lng: '124.6617', photo: 'https://images.unsplash.com/photo-1503785640985-f62e3aeee448?w=300&h=200&fit=crop&auto=format', incidentType: 'Pest Infestation' },
 ]
 
-const SEED_EVENTS: PortalEvent[] = [
+/** @type {PortalEvent[]} */
+const SEED_EVENTS = [
   { id: 'E001', name: 'Arbor Day Drive 2026', year: '2025–2026', start: 'Apr 15, 2026', end: 'May 15, 2026', startIso: '2026-04-15', endIso: '2026-05-15', quota: 50, staff: 45, target: 2250, verified: 1680, pending: 38, incidents: 7, zone: 'Zone A – Main Campus', status: 'active', description: 'Campus-wide planting drive.', guidelines: '', metrics: [], boundary: [] },
   { id: 'E002', name: 'Earth Month Campaign', year: '2025–2026', start: 'Apr 1, 2026', end: 'Apr 30, 2026', startIso: '2026-04-01', endIso: '2026-04-30', quota: 50, staff: 20, target: 1000, verified: 420, pending: 6, incidents: 3, zone: 'Zone B – Annex Field', status: 'active', description: 'Earth Month reforestation.', guidelines: '', metrics: [], boundary: [] },
   { id: 'E003', name: 'Campus Reforestation Q2', year: '2025–2026', start: 'May 1, 2026', end: 'Jun 30, 2026', startIso: '2026-05-01', endIso: '2026-06-30', quota: 50, staff: 15, target: 750, verified: 95, pending: 3, incidents: 2, zone: 'Zone C – Hillside Reserve', status: 'active', description: 'Hillside reserve reforestation.', guidelines: '', metrics: [], boundary: [] },
@@ -217,7 +222,8 @@ const SEED_EVENTS: PortalEvent[] = [
 ]
 
 
-const SEED_LOGS: AuditLogEntry[] = [
+/** @type {AuditLogEntry[]} */
+const SEED_LOGS = [
   { id: 'LOG-1044', time: '2026-04-28 10:42:31', admin: 'Admin Jane', adminId: 'ADM-001', action: 'BATCH_APPROVE', detail: 'Approved 45 submissions via batch process', count: 45, module: 'Submissions', seeded: true },
   { id: 'LOG-1043', time: '2026-04-28 10:15:09', admin: 'Admin Rex', adminId: 'ADM-002', action: 'BATCH_DECLINE', detail: 'Declined 3 submissions — Reason: Inaccurate Photo', count: 3, module: 'Submissions', seeded: true },
   { id: 'LOG-1042', time: '2026-04-28 09:51:44', admin: 'Admin Jane', adminId: 'ADM-001', action: 'EVENT_CREATE', detail: 'Created event: Arbor Day Drive 2026', count: null, module: 'Events', seeded: true },
@@ -233,7 +239,8 @@ const SEED_LOGS: AuditLogEntry[] = [
 ]
 
 /** Extra history revealed by "Load older entries" — two pages of six, oldest last. */
-const OLDER_LOGS: AuditLogEntry[] = [
+/** @type {AuditLogEntry[]} */
+const OLDER_LOGS = [
   { id: 'LOG-1032', time: '2026-04-25 16:02:44', admin: 'Admin Rex', adminId: 'ADM-002', action: 'EVENT_CREATE', detail: 'Created event: Campus Reforestation Q2', count: null, module: 'Events', seeded: true },
   { id: 'LOG-1031', time: '2026-04-25 11:38:02', admin: 'Admin Jane', adminId: 'ADM-001', action: 'BATCH_APPROVE', detail: 'Approved 38 submissions via batch process', count: 38, module: 'Submissions', seeded: true },
   { id: 'LOG-1030', time: '2026-04-24 14:20:10', admin: 'Admin Carl', adminId: 'ADM-003', action: 'SINGLE_DECLINE', detail: 'Declined submission SUB-4409 — Reason: Tag ID Mismatch', count: 1, module: 'Submissions', seeded: true },
@@ -249,7 +256,8 @@ const OLDER_LOGS: AuditLogEntry[] = [
 const OLDER_PAGE_SIZE = 6
 const OLDER_PAGE_COUNT = Math.ceil(OLDER_LOGS.length / OLDER_PAGE_SIZE)
 
-const SEED_NOTIFICATIONS: AppNotification[] = [
+/** @type {AppNotification[]} */
+const SEED_NOTIFICATIONS = [
   { id: 1, msg: '2 new incident reports submitted in the last hour', type: 'warning', time: Date.now() - 1000 * 60 * 45, read: true, target: { module: 'submissions', type: 'incident' } },
   { id: 2, msg: 'New submission approved: Tree planting initiative (Zone A)', type: 'info', time: Date.now() - 1000 * 60 * 60 * 2, read: true, target: { module: 'submissions' } },
   { id: 3, msg: 'Scheduled maintenance for the web map this Friday from 10:00 PM to 11:00 PM', type: 'info', time: Date.now() - 1000 * 60 * 60 * 24, read: true, target: { module: 'overview' } },
@@ -263,20 +271,33 @@ const STORAGE_KEY = 'ecotrace_store_v1'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-/** '2026-04-28 10:42:31' — the MariaDB DATETIME rendering used by the log table. */
-export function formatStamp(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0')
+/**
+ * '2026-04-28 10:42:31' — the MariaDB DATETIME rendering used by the log table.
+ * @param {Date} d
+ * @returns {string}
+ */
+export function formatStamp(d) {
+  /** @param {number} n */
+  const p = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
-/** The date half of an audit-log timestamp, for the AuditLogs range filter. */
-export function stampDate(stamp: string): string {
+/**
+ * The date half of an audit-log timestamp, for the AuditLogs range filter.
+ * @param {string} stamp
+ * @returns {string}
+ */
+export function stampDate(stamp) {
   const m = /^(\d{4}-\d{2}-\d{2})/.exec(stamp ?? '')
   return m ? m[1] : ''
 }
 
-/** 'May 15, 2026' -> Date. Returns null rather than an Invalid Date. */
-export function parseDisplayDate(s: string): Date | null {
+/**
+ * 'May 15, 2026' -> Date. Returns null rather than an Invalid Date.
+ * @param {string} s
+ * @returns {Date | null}
+ */
+export function parseDisplayDate(s) {
   const m = /^([A-Z][a-z]{2})\s+(\d{1,2}),\s+(\d{4})$/.exec(s ?? '')
   if (!m) return null
   const mi = MONTHS.indexOf(m[1])
@@ -284,35 +305,58 @@ export function parseDisplayDate(s: string): Date | null {
   return new Date(Number(m[3]), mi, Number(m[2]))
 }
 
-export function formatDisplayDate(d: Date): string {
+/**
+ * @param {Date} d
+ * @returns {string}
+ */
+export function formatDisplayDate(d) {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
 }
 
-export function isoToDisplay(iso: string): string {
+/**
+ * @param {string} iso
+ * @returns {string}
+ */
+export function isoToDisplay(iso) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso ?? '')) return iso ?? ''
   const [y, m, d] = iso.split('-')
   return `${MONTHS[Number(m) - 1]} ${Number(d)}, ${y}`
 }
 
-const isoOf = (d: Date) =>
+/** @param {Date} d */
+const isoOf = d =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-/** School year for an ISO start date: June and later starts the new S.Y. */
-function schoolYear(iso: string): string {
+/**
+ * School year for an ISO start date: June and later starts the new S.Y.
+ * @param {string} iso
+ * @returns {string}
+ */
+function schoolYear(iso) {
   const m = /^(\d{4})-(\d{2})/.exec(iso ?? '')
   if (!m) return '2025–2026'
   const y = Number(m[1])
   return Number(m[2]) >= 6 ? `${y}–${y + 1}` : `${y - 1}–${y}`
 }
 
-/** Stable pseudo-admin id derived from the signed-in email. */
-function adminIdFor(email: string): string {
+/**
+ * Stable pseudo-admin id derived from the signed-in email.
+ * @param {string} email
+ * @returns {string}
+ */
+function adminIdFor(email) {
   let h = 0
   for (let i = 0; i < email.length; i++) h = (h * 31 + email.charCodeAt(i)) >>> 0
   return `ADM-${String((h % 900) + 100)}`
 }
 
-function nextNumberedId(existing: readonly { id: string }[], prefix: string, width: number): string {
+/**
+ * @param {readonly { id: string }[]} existing
+ * @param {string} prefix
+ * @param {number} width
+ * @returns {string}
+ */
+function nextNumberedId(existing, prefix, width) {
   let max = 0
   for (const row of existing) {
     const n = Number(String(row.id).slice(prefix.length))
@@ -328,18 +372,28 @@ function nextNumberedId(existing: readonly { id: string }[], prefix: string, wid
  * missing from storage is appended. The net effect: a newly shipped fixture
  * still appears on the next load instead of being shadowed by stale storage,
  * while everything the admin already did is preserved.
+ *
+ * @template {{ id: string | number }} T
+ * @param {readonly T[]} fixtures
+ * @param {unknown} persisted
+ * @returns {T[]}
  */
-function mergeRows<T extends { id: string | number }>(fixtures: readonly T[], persisted: unknown): T[] {
+function mergeRows(fixtures, persisted) {
   if (!Array.isArray(persisted)) return fixtures.slice()
-  const saved = persisted.filter(
-    (r): r is T => !!r && typeof r === 'object' && (r as T).id !== undefined && (r as T).id !== null,
+  // The `r is T` predicate has no JSDoc form; the surviving rows are asserted
+  // instead. The condition below is the predicate's own body.
+  const saved = /** @type {T[]} */ (
+    persisted.filter(
+      r => !!r && typeof r === 'object' && /** @type {T} */ (r).id !== undefined && /** @type {T} */ (r).id !== null,
+    )
   )
   if (saved.length === 0) return fixtures.slice()
   const seen = new Set(saved.map(r => r.id))
   return [...saved, ...fixtures.filter(f => !seen.has(f.id))]
 }
 
-function seedState(): StoreSnapshot {
+/** @returns {StoreSnapshot} */
+function seedState() {
   return {
     submissions: SEED_SUBMISSIONS.slice(),
     events: SEED_EVENTS.slice(),
@@ -353,11 +407,12 @@ function seedState(): StoreSnapshot {
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
-function readPersisted(): Partial<StoreSnapshot> {
+/** @returns {Partial<StoreSnapshot>} */
+function readPersisted() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return {}
-    const parsed = JSON.parse(raw) as Partial<StoreSnapshot>
+    const parsed = /** @type {Partial<StoreSnapshot>} */ (JSON.parse(raw))
     return parsed && typeof parsed === 'object' ? parsed : {}
   } catch {
     // Corrupted or unreadable storage is a clean miss, never a crash.
@@ -365,7 +420,8 @@ function readPersisted(): Partial<StoreSnapshot> {
   }
 }
 
-function writePersisted(s: StoreSnapshot) {
+/** @param {StoreSnapshot} s */
+function writePersisted(s) {
   try {
     // `toasts` and `actor` are intentionally excluded: a toast is a 3-second
     // event and the actor belongs to the current session, not to storage.
@@ -383,11 +439,16 @@ function writePersisted(s: StoreSnapshot) {
  * exactly once per load, and the backfilled rows are written back to storage on
  * the admin's next write — a lazy, zero-cost migration.
  */
-function withTarget(n: AppNotification): AppNotification {
+/**
+ * @param {AppNotification} n
+ * @returns {AppNotification}
+ */
+function withTarget(n) {
   return n.target ? n : { ...n, target: LEGACY_NOTIFICATION_TARGET }
 }
 
-function hydrate(): StoreSnapshot {
+/** @returns {StoreSnapshot} */
+function hydrate() {
   const saved = readPersisted()
   const notifications = mergeRows(SEED_NOTIFICATIONS, saved.notifications)
     .map(withTarget)
@@ -406,30 +467,40 @@ function hydrate(): StoreSnapshot {
 
 // ── The store ─────────────────────────────────────────────────────────────────
 
-let snapshot: StoreSnapshot = hydrate()
-const listeners = new Set<() => void>()
+/** @type {StoreSnapshot} */
+let snapshot = hydrate()
+/** @type {Set<() => void>} */
+const listeners = new Set()
 
-/** The current snapshot. Exported so tests and non-React callers can read state
- *  without subscribing; components should use `usePortal()` instead. */
-export function getSnapshot(): StoreSnapshot {
+/**
+ * The current snapshot. Exported so tests and non-React callers can read state
+ * without subscribing; components should use `usePortal()` instead.
+ * @returns {StoreSnapshot}
+ */
+export function getSnapshot() {
   return snapshot
 }
 
-function subscribe(listener: () => void): () => void {
+/** @param {() => void} listener @returns {() => void} */
+function subscribe(listener) {
   listeners.add(listener)
   return () => {
     listeners.delete(listener)
   }
 }
 
-function commit(next: StoreSnapshot) {
+/** @param {StoreSnapshot} next */
+function commit(next) {
   snapshot = next
   writePersisted(next)
   listeners.forEach(l => l())
 }
 
-/** Apply a pure updater, persist, and notify subscribers — one atomic step. */
-function set(update: (s: StoreSnapshot) => StoreSnapshot) {
+/**
+ * Apply a pure updater, persist, and notify subscribers — one atomic step.
+ * @param {(s: StoreSnapshot) => StoreSnapshot} update
+ */
+function set(update) {
   commit(update(snapshot))
 }
 
@@ -437,14 +508,22 @@ function set(update: (s: StoreSnapshot) => StoreSnapshot) {
 
 /** Ids are derived from state, never from a module-level counter — a
  *  module-level `let` is reset by HMR and re-collides on the very next save. */
-function nextNumber(seq: readonly { id: number }[]): number {
+/** @param {readonly { id: number }[]} seq @returns {number} */
+function nextNumber(seq) {
   let max = 0
   for (const row of seq) if (row.id > max) max = row.id
   return max + 1
 }
 
-function pushToast(s: StoreSnapshot, msg: string, type: 'success' | 'error'): StoreSnapshot {
-  const toast: ToastMessage = { id: nextNumber(s.toasts), msg, type }
+/**
+ * @param {StoreSnapshot} s
+ * @param {string} msg
+ * @param {'success' | 'error'} type
+ * @returns {StoreSnapshot}
+ */
+function pushToast(s, msg, type) {
+  /** @type {ToastMessage} */
+  const toast = { id: nextNumber(s.toasts), msg, type }
   return { ...s, toasts: [...s.toasts, toast] }
 }
 
@@ -452,25 +531,30 @@ function pushToast(s: StoreSnapshot, msg: string, type: 'success' | 'error'): St
  * `target` is a required parameter, not an optional one. Every notification is
  * clickable, and a required argument makes "forgot to add a destination" a
  * compile error at the call site rather than an inert row in the panel.
+ *
+ * @param {StoreSnapshot} s
+ * @param {string} msg
+ * @param {NotifType} type
+ * @param {NotificationTarget} target
+ * @returns {StoreSnapshot}
  */
-function pushNotification(
-  s: StoreSnapshot,
-  msg: string,
-  type: NotifType,
-  target: NotificationTarget,
-): StoreSnapshot {
-  const n: AppNotification = { id: nextNumber(s.notifications), msg, type, time: Date.now(), read: false, target }
+function pushNotification(s, msg, type, target) {
+  /** @type {AppNotification} */
+  const n = { id: nextNumber(s.notifications), msg, type, time: Date.now(), read: false, target }
   return { ...s, notifications: [...s.notifications, n] }
 }
 
-function audit(
-  s: StoreSnapshot,
-  action: string,
-  detail: string,
-  module: string,
-  count: number | null,
-): StoreSnapshot {
-  const entry: AuditLogEntry = {
+/**
+ * @param {StoreSnapshot} s
+ * @param {string} action
+ * @param {string} detail
+ * @param {string} module
+ * @param {number | null} count
+ * @returns {StoreSnapshot}
+ */
+function audit(s, action, detail, module, count) {
+  /** @type {AuditLogEntry} */
+  const entry = {
     id: nextNumberedId(s.logs, 'LOG-', 4),
     time: formatStamp(new Date()),
     admin: s.actor?.name ?? 'System',
@@ -484,8 +568,12 @@ function audit(
   return { ...s, logs: [entry, ...s.logs] }
 }
 
-/** Record an export against the audit log without touching domain state. */
-function recordExport(detail: string, count: number) {
+/**
+ * Record an export against the audit log without touching domain state.
+ * @param {string} detail
+ * @param {number} count
+ */
+function recordExport(detail, count) {
   set(s => {
     const withToast = pushToast(s, `Exported ${count.toLocaleString()} row${count === 1 ? '' : 's'}`, 'success')
     // An export is proven by its audit row, so that is where the link goes.
@@ -495,25 +583,32 @@ function recordExport(detail: string, count: number) {
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
-export interface ActionResult {
-  changed: number
-  /** Human-readable one-liner, reused by the toast and the notification. */
-  summary: string
-}
+/**
+ * @typedef {object} ActionResult
+ * @property {number} changed
+ * @property {string} summary Human-readable one-liner, reused by the toast and
+ *   the notification.
+ */
 
-type StatusVerbs = {
-  single: string
-  batch: string
-  log: string
-  note: (sub: Submission) => Partial<Submission>
-}
+/**
+ * @typedef {object} StatusVerbs
+ * @property {string} single
+ * @property {string} batch
+ * @property {string} log
+ * @property {(sub: Submission) => Partial<Submission>} note
+ */
 
 /**
  * The shared body of Approve / Decline / Request re-submission.
  * Only `pending` rows are touched, so a double-click cannot approve twice and
  * the audit count always equals the number of rows that actually changed.
+ *
+ * @param {string[]} ids
+ * @param {SubStatus} status
+ * @param {StatusVerbs} verbs
+ * @returns {ActionResult}
  */
-function applySubmissionStatus(ids: string[], status: SubStatus, verbs: StatusVerbs): ActionResult {
+function applySubmissionStatus(ids, status, verbs) {
   const wanted = new Set(ids)
   const targets = snapshot.submissions.filter(s => wanted.has(s.id) && s.status === 'pending')
   const changed = targets.length
@@ -559,11 +654,18 @@ function applySubmissionStatus(ids: string[], status: SubStatus, verbs: StatusVe
 
 
 export const actions = {
-  setActor(actor: Actor | null) {
+  /**
+   * @param {Actor | null} actor
+   */
+  setActor(actor) {
     set(s => ({ ...s, actor }))
   },
 
-  approveSubmissions(ids: string[]): ActionResult {
+  /**
+   * @param {string[]} ids
+   * @returns {ActionResult}
+   */
+  approveSubmissions(ids) {
     return applySubmissionStatus(ids, 'approved', {
       single: 'Approved',
       batch: 'Approved',
@@ -572,7 +674,13 @@ export const actions = {
     })
   },
 
-  declineSubmissions(ids: string[], reason: string, note: string): ActionResult {
+  /**
+   * @param {string[]} ids
+   * @param {string} reason
+   * @param {string} note
+   * @returns {ActionResult}
+   */
+  declineSubmissions(ids, reason, note) {
     const trim = note.trim()
     const label = trim ? `${reason} — ${trim}` : reason
     return applySubmissionStatus(ids, 'declined', {
@@ -583,7 +691,11 @@ export const actions = {
     })
   },
 
-  requestResubmit(ids: string[]): ActionResult {
+  /**
+   * @param {string[]} ids
+   * @returns {ActionResult}
+   */
+  requestResubmit(ids) {
     return applySubmissionStatus(ids, 'resubmit', {
       single: 'Requested re-submission for',
       batch: 'Requested re-submission for',
@@ -592,12 +704,18 @@ export const actions = {
     })
   },
 
-  createEvent(draft: EventDraft, publish: boolean): PortalEvent {
+  /**
+   * @param {EventDraft} draft
+   * @param {boolean} publish
+   * @returns {PortalEvent}
+   */
+  createEvent(draft, publish) {
     const quota = Math.max(1, Math.min(50, Number(draft.quota) || 1))
     const name = draft.title.trim() || 'Untitled Event'
     const startIso = draft.start
     const endIso = draft.end
-    const event: PortalEvent = {
+    /** @type {PortalEvent} */
+    const event = {
       id: '',
       name,
       year: schoolYear(startIso),
@@ -639,7 +757,12 @@ export const actions = {
 
 
   /** Move an event's end date out by `days` and re-render the display string. */
-  extendEvent(eventId: string, days = 7): ActionResult {
+  /**
+   * @param {string} eventId
+   * @param {any} days = 7
+   * @returns {ActionResult}
+   */
+  extendEvent(eventId, days = 7) {
     const ev = snapshot.events.find(e => e.id === eventId)
     if (!ev) {
       const summary = 'That event no longer exists'
@@ -668,7 +791,12 @@ export const actions = {
   },
 
   /** Bulk quota reassignment: per-staff quota and the derived target both move. */
-  reassignQuotas(eventId: string, quota: number): ActionResult {
+  /**
+   * @param {string} eventId
+   * @param {number} quota
+   * @returns {ActionResult}
+   */
+  reassignQuotas(eventId, quota) {
     const ev = snapshot.events.find(e => e.id === eventId)
     const nextQuota = Math.max(1, Math.min(50, Math.round(quota) || 1))
     if (!ev) {
@@ -696,7 +824,10 @@ export const actions = {
   },
 
   /** Reveal the next page of history. Returns how many rows were added. */
-  loadOlderLogs(): number {
+  /**
+   * @returns {number}
+   */
+  loadOlderLogs() {
     if (snapshot.olderPages >= OLDER_PAGE_COUNT) return 0
     const page = OLDER_LOGS.slice(snapshot.olderPages * OLDER_PAGE_SIZE, (snapshot.olderPages + 1) * OLDER_PAGE_SIZE)
     if (page.length === 0) return 0
@@ -718,11 +849,17 @@ export const actions = {
     return snapshot.olderPages
   },
 
-  dismissToast(id: number) {
+  /**
+   * @param {number} id
+   */
+  dismissToast(id) {
     set(s => ({ ...s, toasts: s.toasts.filter(t => t.id !== id) }))
   },
 
-  markRead(id: number) {
+  /**
+   * @param {number} id
+   */
+  markRead(id) {
     set(s => ({ ...s, notifications: s.notifications.map(n => (n.id === id ? { ...n, read: true } : n)) }))
   },
 
@@ -750,9 +887,10 @@ export const actions = {
 
 // ── React bindings ───────────────────────────────────────────────────────────
 
-export type Module = 'overview' | 'events' | 'submissions' | 'map' | 'analytics' | 'logs'
+/** @typedef {'overview' | 'events' | 'submissions' | 'map' | 'analytics' | 'logs'} Module */
 
-export const MODULE_TITLES: Record<Module, string> = {
+/** @type {Record<Module, string>} */
+export const MODULE_TITLES = {
   overview: 'Overview',
   events: 'Event Management',
   submissions: 'Submissions',
@@ -768,43 +906,51 @@ export const MODULE_TITLES: Record<Module, string> = {
  * no-op in React, so without a nonce the destination effect would fire on the
  * first click and silently do nothing on the second. Bumping it on every
  * navigate guarantees a fresh object and a fresh effect run.
+ *
+ * @typedef {object} NavFocus
+ * @property {string} [treeTag]
+ * @property {SubStatus} [status]
+ * @property {SubType} [type]
+ * @property {string} [event]
+ * @property {number} nonce
  */
-export interface NavFocus {
-  treeTag?: string
-  status?: SubStatus
-  type?: SubType
-  event?: string
-  nonce: number
-}
 
-export interface PortalContextValue extends StoreSnapshot {
-  /** Module keys visited at least once, in visit order. Drives keep-alive. */
-  visited: Module[]
-  active: Module
-  /** Navigate, optionally leaving a deep-link instruction for the destination. */
-  navigate: (m: Module, opts?: Omit<NavFocus, 'nonce'>) => void
-  focus: NavFocus | null
-  clearFocus: () => void
-  /** Work still waiting on the admin, recomputed from state on every change. */
-  attention: AttentionItem[]
-  /** Derived counts — the single source for the sidebar badge and Overview. */
-  pendingCount: number
-  incidentCount: number
-  unreadCount: number
-  storeActions: typeof actions
-}
+/**
+ * @typedef {StoreSnapshot & {
+ *   visited: Module[],
+ *   active: Module,
+ *   navigate: (m: Module, opts?: Omit<NavFocus, 'nonce'>) => void,
+ *   focus: NavFocus | null,
+ *   clearFocus: () => void,
+ *   attention: AttentionItem[],
+ *   pendingCount: number,
+ *   incidentCount: number,
+ *   unreadCount: number,
+ *   storeActions: typeof actions,
+ * }} PortalContextValue
+ *
+ * `visited` is the module keys visited at least once, in visit order (drives
+ * keep-alive); `navigate` leaves a deep-link instruction for the destination;
+ * `attention` is work still waiting, recomputed on every change; the three
+ * counts are the single source for the sidebar badge and Overview.
+ */
 
-const PortalContext = createContext<PortalContextValue | null>(null)
+const PortalContext = createContext(/** @type {PortalContextValue | null} */ (null))
 
-export function moduleFromHash(hash: string): Module {
+/** @param {string} hash @returns {Module} */
+export function moduleFromHash(hash) {
   const raw = (hash ?? '').replace(/^#\/?/, '')
-  return (Object.keys(MODULE_TITLES) as Module[]).includes(raw as Module) ? (raw as Module) : 'overview'
+  return /** @type {Module[]} */ (Object.keys(MODULE_TITLES)).includes(/** @type {Module} */ (raw))
+    ? /** @type {Module} */ (raw)
+    : 'overview'
 }
 
-export function PortalProvider({ children }: { children: ReactNode }) {
-  const [active, setActive] = useState<Module>(() => moduleFromHash(window.location.hash))
-  const [visited, setVisited] = useState<Module[]>([moduleFromHash(window.location.hash)])
-  const [focus, setFocus] = useState<NavFocus | null>(null)
+/** @param {{ children: ReactNode }} props */
+export function PortalProvider({ children }) {
+  // Lazy initialiser: the argument is a thunk, not a Module value.
+  const [active, setActive] = useState(() => moduleFromHash(window.location.hash))
+  const [visited, setVisited] = useState(/** @type {Module[]} */ ([moduleFromHash(window.location.hash)]))
+  const [focus, setFocus] = useState(/** @type {NavFocus | null} */ (null))
   // A ref, not state: the nonce only has to make each `focus` object distinct,
   // and routing it through state would re-render the whole tree for no visual gain.
   const nonceRef = useRef(0)
@@ -827,11 +973,18 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  const navigate = useCallback((m: Module, opts?: Omit<NavFocus, 'nonce'>) => {
-    setActive(m)
-    // A plain tab switch clears any pending focus; a deep link replaces it.
-    setFocus(opts ? { ...opts, nonce: ++nonceRef.current } : null)
-  }, [])
+  const navigate = useCallback(
+    /**
+     * @param {Module} m
+     * @param {Omit<NavFocus, 'nonce'>} [opts]
+     */
+    (m, opts) => {
+      setActive(m)
+      // A plain tab switch clears any pending focus; a deep link replaces it.
+      setFocus(opts ? { ...opts, nonce: ++nonceRef.current } : null)
+    },
+    [],
+  )
 
   const clearFocus = useCallback(() => setFocus(null), [])
 
@@ -849,7 +1002,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     [state],
   )
 
-  const value = useMemo<PortalContextValue>(
+  /** @type {PortalContextValue} */
+  const value = useMemo(
     () => ({
       ...state,
       visited,
@@ -869,14 +1023,18 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   return <PortalContext.Provider value={value}>{children}</PortalContext.Provider>
 }
 
-export function usePortal(): PortalContextValue {
+/** @returns {PortalContextValue} */
+export function usePortal() {
   const ctx = useContext(PortalContext)
   if (!ctx) throw new Error('usePortal must be used inside <PortalProvider>')
   return ctx
 }
 
-/** Shorthand for components that only need the action bundle. */
-export function usePortalActions(): typeof actions {
+/**
+ * Shorthand for components that only need the action bundle.
+ * @returns {typeof actions}
+ */
+export function usePortalActions() {
   return usePortal().storeActions
 }
 
@@ -889,9 +1047,14 @@ export function usePortalActions(): typeof actions {
  * notification announcing it can never disagree. Being derived is also what keeps
  * it honest: approving the last pending row makes the item vanish, with no expiry
  * pass and no dedupe rule to get wrong.
+ *
+ * @param {Submission[]} submissions
+ * @param {PortalEvent[]} events
+ * @returns {AttentionItem[]}
  */
-export function attentionItems(submissions: Submission[], events: PortalEvent[]): AttentionItem[] {
-  const items: AttentionItem[] = []
+export function attentionItems(submissions, events) {
+  /** @type {AttentionItem[]} */
+  const items = []
   const pending = submissions.filter(s => s.status === 'pending')
   if (pending.length > 0) {
     items.push({
@@ -923,12 +1086,17 @@ export function attentionItems(submissions: Submission[], events: PortalEvent[])
   return items
 }
 
-export function activeEvents(events: PortalEvent[]): PortalEvent[] {
+/** @param {PortalEvent[]} events @returns {PortalEvent[]} */
+export function activeEvents(events) {
   return events.filter(e => e.status === 'active')
 }
 
-/** Completion percentage, or null when the event has no target yet. */
-export function eventProgress(ev: PortalEvent): number | null {
+/**
+ * Completion percentage, or null when the event has no target yet.
+ * @param {PortalEvent} ev
+ * @returns {number | null}
+ */
+export function eventProgress(ev) {
   if (ev.target <= 0) return null
   return Math.round((ev.verified / ev.target) * 100)
 }
