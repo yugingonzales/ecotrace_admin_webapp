@@ -4,20 +4,37 @@ import {
   MapContainer, TileLayer, Marker, Popup, LayersControl, useMapEvents,
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { ZONES, MAP_CENTER, CAMPUS_BOUNDS, ZONE_LABEL_TO_NAME, type ZoneName } from '../../lib/site'
-import { type TreeMarker, type StatusKey } from '../../lib/trees'
+import { ZONES, MAP_CENTER, CAMPUS_BOUNDS, ZONE_LABEL_TO_NAME } from '../../lib/site'
 import { usePlants } from '../../lib/usePlants'
 import { usePortal } from '../../lib/store'
 import MapAutoResize from '../map/MapAutoResize'
 
-const statusConfig: Record<StatusKey, { color: string; label: string; stroke: string }> = {
+/** @typedef {import('../../lib/site.js').ZoneName} ZoneName */
+/** @typedef {import('../../lib/trees.js').TreeMarker} TreeMarker */
+/** @typedef {import('../../lib/trees.js').StatusKey} StatusKey */
+
+/**
+ * @typedef {object} StatusStyle
+ * @property {string} color
+ * @property {string} label
+ * @property {string} stroke
+ */
+
+/** @type {Record<StatusKey, StatusStyle>} */
+const statusConfig = {
   verified: { color: '#2f9e6e', label: 'Verified & Healthy', stroke: '#237a54' },
   pending: { color: '#d9902b', label: 'Pending Verification', stroke: '#b06e16' },
   incident: { color: '#dc3a3a', label: 'Incident / Declined', stroke: '#b02a2a' },
   unverified: { color: '#9aa1a9', label: 'Unverified / Missing', stroke: '#6b7280' },
 }
 
-const makeIcon = (color: string, stroke: string, incident: boolean, active: boolean) => {
+/**
+ * @param {string} color
+ * @param {string} stroke
+ * @param {boolean} incident
+ * @param {boolean} active
+ */
+const makeIcon = (color, stroke, incident, active) => {
   const size = active ? 26 : 20
   return L.divIcon({
     className: 'ecotrace-pin',
@@ -35,17 +52,20 @@ const makeIcon = (color: string, stroke: string, incident: boolean, active: bool
   })
 }
 
-// Map-level click handler: clicking empty map space clears the active marker.
-function MapClickHandler({ onBackgroundClick }: { onBackgroundClick: () => void }) {
+/**
+ * Map-level click handler: clicking empty map space clears the active marker.
+ * @param {{ onBackgroundClick: () => void }} props
+ */
+function MapClickHandler({ onBackgroundClick }) {
   useMapEvents({ click: onBackgroundClick })
   return null
 }
 
 export default function MapView() {
   const { events, submissions, storeActions, navigate } = usePortal()
-  const [activeMarker, setActiveMarker] = useState<TreeMarker | null>(null)
-  const [activeLayer, setActiveLayer] = useState<'all' | StatusKey>('all')
-  const [zoneFilter, setZoneFilter] = useState<'all' | ZoneName>('all')
+  const [activeMarker, setActiveMarker] = useState(/** @type {TreeMarker | null} */ (null))
+  const [activeLayer, setActiveLayer] = useState(/** @type {'all' | StatusKey} */ ('all'))
+  const [zoneFilter, setZoneFilter] = useState(/** @type {'all' | ZoneName} */ ('all'))
   const [eventFilter, setEventFilter] = useState('all')
 
   // Served from the API when VITE_ENABLE_API is on, otherwise from the local
@@ -72,7 +92,8 @@ export default function MapView() {
   })
   const visibleMarkers = activeLayer === 'all' ? zoneFiltered : zoneFiltered.filter(m => m.status === activeLayer)
 
-  const counts: Record<'all' | StatusKey, number> = {
+  /** @type {Record<'all' | StatusKey, number>} */
+  const counts = {
     all: zoneFiltered.length,
     verified: zoneFiltered.filter(m => m.status === 'verified').length,
     pending: zoneFiltered.filter(m => m.status === 'pending').length,
@@ -119,7 +140,10 @@ export default function MapView() {
             className="select text-xs"
             style={{ width: 'auto' }}
             value={zoneFilter}
-            onChange={e => { setZoneFilter(e.target.value as 'all' | ZoneName); setActiveMarker(null) }}
+            onChange={e => {
+              setZoneFilter(/** @type {'all' | ZoneName} */ (e.target.value))
+              setActiveMarker(null)
+            }}
           >
             <option value="all">All Zones</option>
             {ZONES.map(z => (
@@ -213,7 +237,7 @@ export default function MapView() {
             style={{ zIndex: 500, boxShadow: '0 4px 12px rgba(16,24,40,0.1)' }}
           >
             <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-              {(Object.keys(statusConfig) as StatusKey[]).map(key => (
+              {/** @type {StatusKey[]} */ (Object.keys(statusConfig)).map(key => (
                 <button
                   key={key}
                   onClick={() => { setActiveLayer(activeLayer === key ? 'all' : key); setActiveMarker(null) }}

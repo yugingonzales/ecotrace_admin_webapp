@@ -1,15 +1,17 @@
 import { activeEvents, eventProgress, usePortal } from '../../lib/store'
 
-interface StatCardProps {
-  label: string
-  value: string | number
-  sub?: string
-  color?: string
-  delta?: string
-  positive?: boolean
-}
+/**
+ * @typedef {object} StatCardProps
+ * @property {string} label
+ * @property {string | number} value
+ * @property {string} [sub]
+ * @property {string} [color]
+ * @property {string} [delta]
+ * @property {boolean} [positive]
+ */
 
-function StatCard({ label, value, sub, color = 'var(--text)', delta, positive }: StatCardProps) {
+/** @param {StatCardProps} props */
+function StatCard({ label, value, sub, color = 'var(--text)', delta, positive }) {
   return (
     <div className="card p-4">
       <div className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{label}</div>
@@ -26,8 +28,11 @@ function StatCard({ label, value, sub, color = 'var(--text)', delta, positive }:
   )
 }
 
-/** Audit actions mapped to the badge tones used in the activity feed. */
-const typeStyle: Record<string, string> = {
+/**
+ * Audit actions mapped to the badge tones used in the activity feed.
+ * @type {Record<string, string>}
+ */
+const typeStyle = {
   BATCH_APPROVE: 'badge-accent',
   SINGLE_APPROVE: 'badge-accent',
   BATCH_DECLINE: 'badge-warning',
@@ -43,13 +48,18 @@ const typeStyle: Record<string, string> = {
   STAFF_EXEMPT: 'badge-neutral',
 }
 
-/** '2026-04-28 10:42:31' -> '10:42 AM', or 'Yesterday, 08:55 AM' / a date. */
-function shortTime(stamp: string): string {
+/**
+ * '2026-04-28 10:42:31' -> '10:42 AM', or 'Yesterday, 08:55 AM' / a date.
+ * @param {string} stamp
+ * @returns {string}
+ */
+function shortTime(stamp) {
   const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/.exec(stamp ?? '')
   if (!m) return stamp
   const hours = Number(m[2])
   const clock = `${((hours + 11) % 12) + 1}:${m[3]} ${hours < 12 ? 'AM' : 'PM'}`
-  const isoOfDay = (d: Date) =>
+  /** @param {Date} d */
+  const isoOfDay = d =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   if (m[1] === isoOfDay(new Date())) return clock
   if (m[1] === isoOfDay(new Date(Date.now() - 86400000))) return `Yesterday, ${clock}`

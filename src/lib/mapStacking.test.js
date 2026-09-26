@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 /**
@@ -19,10 +19,30 @@ import { resolve } from 'node:path'
 /** @param {string} rel */
 const read = rel => readFileSync(resolve(__dirname, '..', rel), 'utf8')
 
+/**
+ * Read a source file by extension-less path, trying each known extension.
+ *
+ * The TypeScript -> JavaScript migration moved these components from .tsx to
+ * .jsx. Hardcoding either extension here made this suite fail with ENOENT the
+ * moment a file was renamed, which is a false alarm about the stacking
+ * contract rather than a real one. Resolving instead means a rename in either
+ * direction is a no-op for this test.
+ *
+ * @param {string} rel Extension-less path relative to `src/`.
+ * @returns {string}
+ */
+const readSource = rel => {
+  const base = resolve(__dirname, '..', rel)
+  for (const ext of ['.js', '.jsx', '.ts', '.tsx']) {
+    if (existsSync(base + ext)) return readFileSync(base + ext, 'utf8')
+  }
+  throw new Error(`No source file found for "${rel}" (tried .js .jsx .ts .tsx)`)
+}
+
 const css = read('index.css')
-const mapViewSrc = read('components/modules/MapView.tsx')
-const editorSrc = read('components/map/EventBoundaryEditor.tsx')
-const appSrc = read('App.tsx')
+const mapViewSrc = readSource('components/modules/MapView')
+const editorSrc = readSource('components/map/EventBoundaryEditor')
+const appSrc = readSource('App')
 
 /**
  * Minimal CSS rule parser. Comments are stripped first, otherwise a comment
@@ -56,8 +76,11 @@ const isolatedClasses = new Set(
     .filter(s => s.startsWith('.')),
 )
 
-/** Every source file that mounts a Leaflet map. */
-const MAP_FILES = ['components/modules/MapView.tsx', 'components/map/EventBoundaryEditor.tsx']
+/**
+ * Every source file that mounts a Leaflet map. Paths are extension-less so they
+ * resolve through `readSource` and survive a .tsx -> .jsx rename.
+ */
+const MAP_FILES = ['components/modules/MapView', 'components/map/EventBoundaryEditor']
 
 describe('map stacking context', () => {
   it('isolates the Map page mini map (.map-card)', () => {
@@ -90,7 +113,7 @@ describe('map stacking context', () => {
     expect(isolatedClasses.size).toBeGreaterThan(0)
 
     for (const rel of MAP_FILES) {
-      const src = read(rel)
+      const src = readSource(rel)
       if (!src.includes('<MapContainer')) continue
       const used = [...src.matchAll(/className="([^"]*)"/g)]
         .flatMap(m => m[1].split(/\s+/))
@@ -100,7 +123,7 @@ describe('map stacking context', () => {
   })
 
   it('has no isolation rule that no component uses', () => {
-    const everySource = [...MAP_FILES, 'App.tsx'].map(read).join('\n')
+    const everySource = [...MAP_FILES, 'App'].map(readSource).join('\n')
     const orphan = [...isolatedClasses].filter(cls => !everySource.includes(cls.slice(1)))
     expect(orphan).toEqual([])
   })
