@@ -10,15 +10,10 @@ import {
   LayersControl, useMap, useMapEvents,
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { CAMPUS_BOUNDS, framingBounds, boundaryArea, type Boundary, type ZoneName } from '../../lib/site'
+import { CAMPUS_BOUNDS, ZONE_LABEL_TO_NAME, framingBounds, boundaryArea, type Boundary } from '../../lib/site'
+import MapAutoResize from './MapAutoResize'
 
 const MAX_POINTS = 30
-
-const ZONE_LABEL_TO_NAME: Record<string, ZoneName> = {
-  'Zone A – Main Campus': 'Zone I',
-  'Zone B – Annex Field': 'Zone III',
-  'Zone C – Hillside Reserve': 'Zone II',
-}
 
 interface Props {
   zoneLabel?: string
@@ -273,6 +268,7 @@ export default function EventBoundaryEditor({
         </LayersControl.BaseLayer>
       </LayersControl>
 
+      <MapAutoResize />
       <FitToBoundary boundary={boundary} />
       {editing && <DrawClicks onAdd={add} />}
 

@@ -4,8 +4,11 @@ import {
   MapContainer, TileLayer, Marker, Popup, LayersControl, useMapEvents,
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { ZONES, MAP_CENTER, CAMPUS_BOUNDS, type ZoneName } from '../../lib/site'
-import { trees as markers, type TreeMarker, type StatusKey } from '../../lib/trees'
+import { ZONES, MAP_CENTER, CAMPUS_BOUNDS, ZONE_LABEL_TO_NAME, type ZoneName } from '../../lib/site'
+import { type TreeMarker, type StatusKey } from '../../lib/trees'
+import { usePlants } from '../../lib/usePlants'
+import { usePortal } from '../../lib/store'
+import MapAutoResize from '../map/MapAutoResize'
 
 const statusConfig: Record<StatusKey, { color: string; label: string; stroke: string }> = {
   verified: { color: '#2f9e6e', label: 'Verified & Healthy', stroke: '#237a54' },
@@ -39,11 +42,34 @@ function MapClickHandler({ onBackgroundClick }: { onBackgroundClick: () => void 
 }
 
 export default function MapView() {
+  const { events, submissions, storeActions, navigate } = usePortal()
   const [activeMarker, setActiveMarker] = useState<TreeMarker | null>(null)
   const [activeLayer, setActiveLayer] = useState<'all' | StatusKey>('all')
   const [zoneFilter, setZoneFilter] = useState<'all' | ZoneName>('all')
+  const [eventFilter, setEventFilter] = useState('all')
 
-  const zoneFiltered = zoneFilter === 'all' ? markers : markers.filter(m => m.zone === zoneFilter)
+  // Served from the API when VITE_ENABLE_API is on, otherwise from the local
+  // fixture. Either way `markers` is never empty — see usePlants for why.
+  const { markers, stale, error, refresh } = usePlants()
+
+  /**
+   * The event filter narrows the map to the surveyed zone behind the chosen
+   * event, and highlights any tree that event has a submission for. Picking
+   * "All Events" restores the full campus view.
+   */
+  const eventZone = eventFilter === 'all'
+    ? null
+    : (ZONE_LABEL_TO_NAME[events.find(e => e.name === eventFilter)?.zone ?? ''] ?? null)
+
+  const eventTreeTags = eventFilter === 'all'
+    ? null
+    : new Set(submissions.filter(s => s.event === eventFilter).map(s => s.treeTag))
+
+  const zoneFiltered = markers.filter(m => {
+    if (zoneFilter !== 'all' && m.zone !== zoneFilter) return false
+    if (eventZone && m.zone !== eventZone) return false
+    return true
+  })
   const visibleMarkers = activeLayer === 'all' ? zoneFiltered : zoneFiltered.filter(m => m.status === activeLayer)
 
   const counts: Record<'all' | StatusKey, number> = {
@@ -53,6 +79,12 @@ export default function MapView() {
     incident: zoneFiltered.filter(m => m.status === 'incident').length,
     unverified: zoneFiltered.filter(m => m.status === 'unverified').length,
   }
+
+  /** Submissions tied to the selected pin, for the two action buttons. */
+  const hasSubmission = activeMarker !== null && submissions.some(s => s.treeTag === activeMarker.treeTag)
+  const pendingForTag = activeMarker
+    ? submissions.filter(s => s.treeTag === activeMarker.treeTag && s.status === 'pending').map(s => s.id)
+    : []
 
   const zoneSummary = ZONES.map(z => ({
     ...z,
@@ -71,10 +103,17 @@ export default function MapView() {
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <select className="select text-xs" style={{ width: 'auto' }} defaultValue="Arbor Day Drive 2026">
-            <option>Arbor Day Drive 2026</option>
-            <option>Earth Month Campaign</option>
-            <option>Campus Reforestation Q2</option>
+          <select
+            className="select text-xs"
+            style={{ width: 'auto' }}
+            value={eventFilter}
+            aria-label="Filter by event"
+            onChange={e => { setEventFilter(e.target.value); setActiveMarker(null) }}
+          >
+            <option value="all">All Events</option>
+            {events.map(ev => (
+              <option key={ev.id} value={ev.name}>{ev.name}</option>
+            ))}
           </select>
           <select
             className="select text-xs"
@@ -93,6 +132,21 @@ export default function MapView() {
       <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 280px' }}>
         {/* Map */}
         <div className="card overflow-hidden relative map-card">
+          {stale && (
+            <div
+              className="flex items-center justify-between gap-3 px-4 py-2 text-xs"
+              style={{ background: '#fef3c7', color: '#92400e', borderBottom: '1px solid #fcd34d' }}
+              role="status"
+            >
+              <span>
+                Showing the local tree fixture
+                {error ? ` — ${error}` : ' — the EcoTrace API is disabled.'}
+              </span>
+              <button type="button" onClick={refresh} className="underline font-semibold">
+                Retry
+              </button>
+            </div>
+          )}
           <MapContainer
             className="w-full"
             style={{ height: 560 }}
@@ -103,6 +157,7 @@ export default function MapView() {
             scrollWheelZoom
           >
             <MapClickHandler onBackgroundClick={() => setActiveMarker(null)} />
+            <MapAutoResize />
             <LayersControl position="topright">
               <LayersControl.BaseLayer checked name="OSM Streets">
                 <TileLayer
@@ -122,11 +177,12 @@ export default function MapView() {
             {visibleMarkers.map(m => {
               const cfg = statusConfig[m.status]
               const isActive = activeMarker?.id === m.id
+              const inEvent = eventTreeTags?.has(m.treeTag) ?? false
               return (
                 <Marker
                   key={m.id}
                   position={[m.lat, m.lng]}
-                  icon={makeIcon(cfg.color, cfg.stroke, m.status === 'incident', isActive)}
+                  icon={makeIcon(cfg.color, cfg.stroke, m.status === 'incident', isActive || inEvent)}
                   eventHandlers={{ click: () => setActiveMarker(m) }}
                 >
                   <Popup minWidth={180}>
@@ -211,9 +267,31 @@ export default function MapView() {
                 </div>
               </div>
               <div className="flex gap-1.5">
-                <button className="btn btn-sm flex-1">View Submission</button>
+                <button
+                  className="btn btn-sm flex-1"
+                  onClick={() => navigate('submissions', { treeTag: activeMarker.treeTag })}
+                  disabled={!hasSubmission}
+                  title={
+                    hasSubmission
+                      ? 'Open this tree in Submissions'
+                      : 'No submission references this tree tag yet'
+                  }
+                >
+                  View Submission
+                </button>
                 {activeMarker.status === 'pending' && (
-                  <button className="btn btn-sm btn-primary flex-1">Approve</button>
+                  <button
+                    className="btn btn-sm btn-primary flex-1"
+                    onClick={() => storeActions.approveSubmissions(pendingForTag)}
+                    disabled={pendingForTag.length === 0}
+                    title={
+                      pendingForTag.length > 0
+                        ? `Approve ${pendingForTag.length} pending submission(s) for this tree`
+                        : 'No pending submission for this tree'
+                    }
+                  >
+                    Approve
+                  </button>
                 )}
               </div>
             </div>

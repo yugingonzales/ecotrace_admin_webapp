@@ -265,6 +265,52 @@ h1, h2, h3, h4, h5 {
   border: none;
 }
 
+/*
+ * Stacking contract for every map on the site.
+ *
+ * Leaflet assigns z-indexes in the hundreds to 1000 *internally*:
+ *   .leaflet-tile-pane    200      .leaflet-marker-pane  600
+ *   .leaflet-pane         400      .leaflet-tooltip-pane 650
+ *   .leaflet-shadow-pane  500      .leaflet-popup-pane   700
+ *   .leaflet-control      800      .leaflet-top/-bottom 1000
+ *
+ * Those numbers are only ever meant to order things *within* one map. But a
+ * map root is `position: relative` with `z-index: auto`, which does NOT create
+ * a stacking context — so every one of Leaflet's panes resolved in the ROOT
+ * stacking context instead, and outranked app chrome. The header is `z-30`
+ * (App.tsx), so the zoom buttons and the LayersControl switcher painted straight
+ * over the header and over the notification/avatar panels. The zoom controls
+ * made it worse: index.css centres them with
+ *   .cc-event-map .leaflet-top.leaflet-left { transform: translateY(-50%) }
+ * and `transform` creates a stacking context AND a containing block, pinning
+ * that whole corner container (and every control Leaflet mounts into it) at
+ * z-1000 in the root.
+ *
+ * `isolation: isolate` creates a stacking context WITHOUT `position` and
+ * WITHOUT the containing-block side effects of `transform`, so Leaflet's
+ * internal ordering is preserved verbatim while nothing inside a map can ever
+ * climb out. The map root stays `z-index: auto` and therefore paints in normal
+ * flow order, below the header's positive z-30. Correct by construction rather
+ * than by keeping a number in the header above a number in Leaflet's CSS — if
+ * Leaflet raised its ceiling tomorrow, the header would still win.
+ *
+ * THREE map roots need this, not two:
+ *   .map-card        Map page mini map        (MapView.tsx)
+ *   .cc-event-map    Events page mini map     (EventBoundaryEditor.tsx compact)
+ *   .cc-map-body     fullscreen boundary map  (EventBoundaryEditor.tsx modal)
+ *
+ * `.cc-event-map` is the one that was missed the first time round, and it is
+ * the worst of the three: it is the element the `transform: translateY(-50%)`
+ * rule above targets, so its zoom controls sit at z-1000 in the root, and it
+ * also hosts `.map-expand-btn` at z-500. `mapStacking.test.ts` fails if a
+ * fourth map root appears without an isolation rule.
+ */
+.map-card,
+.cc-event-map,
+.cc-map-body {
+  isolation: isolate;
+}
+
 .map-card .leaflet-container {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }

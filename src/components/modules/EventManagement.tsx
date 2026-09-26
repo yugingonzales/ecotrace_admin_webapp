@@ -1,77 +1,39 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import EventBoundaryEditor from '../map/EventBoundaryEditor'
 import type { Boundary } from '../../lib/site'
 import { treesEligibleForVerification } from '../../lib/trees'
+import { usePlants } from '../../lib/usePlants'
+import { eventProgress, usePortal, type EventDraft, type PortalEvent } from '../../lib/store'
+import { useEscapeToClose, useScrollLock } from '../../lib/useEscapeToClose'
+import { downloadCsv } from '../../lib/csv'
 
-const events = [
-  {
-    id: 'E001',
-    name: 'Arbor Day Drive 2026',
-    year: '2025–2026',
-    start: 'Apr 15, 2026',
-    end: 'May 15, 2026',
-    quota: 50,
-    staff: 45,
-    target: 2250,
-    verified: 1680,
-    pending: 38,
-    incidents: 7,
-    zone: 'Zone A – Main Campus',
-    status: 'active',
-  },
-  {
-    id: 'E002',
-    name: 'Earth Month Campaign',
-    year: '2025–2026',
-    start: 'Apr 1, 2026',
-    end: 'Apr 30, 2026',
-    quota: 50,
-    staff: 20,
-    target: 1000,
-    verified: 420,
-    pending: 6,
-    incidents: 3,
-    zone: 'Zone B – Annex Field',
-    status: 'active',
-  },
-  {
-    id: 'E003',
-    name: 'Campus Reforestation Q2',
-    year: '2025–2026',
-    start: 'May 1, 2026',
-    end: 'Jun 30, 2026',
-    quota: 50,
-    staff: 15,
-    target: 750,
-    verified: 95,
-    pending: 3,
-    incidents: 2,
-    zone: 'Zone C – Hillside Reserve',
-    status: 'active',
-  },
-  {
-    id: 'E004',
-    name: 'Greening Initiative S1',
-    year: '2024–2025',
-    start: 'Sep 1, 2025',
-    end: 'Oct 31, 2025',
-    quota: 30,
-    staff: 35,
-    target: 1050,
-    verified: 1020,
-    pending: 0,
-    incidents: 12,
-    zone: 'Zone A – Main Campus',
-status: 'completed',
-  },
-]
+// Events now live in the shared store (`lib/store.tsx`) so Create, Extend and
+// Reassign Quotas can mutate them. This module only reads.
 
 const statusStyle: Record<string, string> = {
   active: 'badge-accent',
   completed: 'badge-neutral',
   draft: 'badge-warning',
 }
+
+/**
+ * Module scope, not component scope: the list is a constant, and "Select all"
+ * can only be correct if it is the *same* list the chips are rendered from.
+ * Rebuilding it per render would have made `metrics.length === options.length`
+ * compare against a fresh identity every time.
+ */
+const METRIC_OPTIONS = [
+  'GPS Coordinates',
+  'Status Photo',
+  'Tree Height (cm)',
+  'Growth Stage',
+  'Diameter Measurement (cm)',
+  'Survival Status',
+] as const
+
 function CreateEventForm({ onClose }: { onClose: () => void }) {
+  const { storeActions } = usePortal()
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -86,8 +48,6 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     metrics: [] as string[],
   })
 
-  const metricOptions = ['GPS Coordinates', 'Status Photo', 'Tree Height (cm)', 'Growth Stage', 'Diameter Measurement (cm)', 'Species Confirmation', 'Survival Status']
-
   const toggleMetric = (m: string) => {
     setForm(f => ({
       ...f,
@@ -95,12 +55,67 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
     }))
   }
 
+  // "Select all" / "Clear all" as a single toggle, so there is only ever one
+  // control to aim at regardless of the current selection. The chips stay
+  // individually clickable for the common case of a couple of exceptions.
+  const allMetricsSelected = form.metrics.length === METRIC_OPTIONS.length
+  const toggleAllMetrics = () => {
+    setForm(f => ({
+      ...f,
+      metrics: allMetricsSelected ? [] : [...METRIC_OPTIONS],
+    }))
+  }
+
+  // Fed from the same source as the map so the eligible-tree count never
+  // contradicts the pins drawn beside it.
+  const { markers } = usePlants()
+
   const eligibleTrees = useMemo(
-    () => treesEligibleForVerification(form.boundary, form.plantFrom, form.plantTo),
-    [form.boundary, form.plantFrom, form.plantTo],
+    () => treesEligibleForVerification(form.boundary, form.plantFrom, form.plantTo, markers),
+    [form.boundary, form.plantFrom, form.plantTo, markers],
   )
 
   const [mapExpanded, setMapExpanded] = useState(false)
+
+  useEscapeToClose(onClose)
+  useScrollLock()
+
+  /** One validator for both footer buttons, so Save-draft and Publish cannot
+   *  disagree about what a valid event is. */
+  const submit = (publish: boolean) => {
+    if (!form.title.trim()) return setError('Event name is required.')
+    if (!form.start) return setError('Start date is required.')
+    if (!form.end) return setError('End date is required.')
+    if (form.end < form.start) return setError('End date must be on or after the start date.')
+    const quota = Number(form.quota)
+    if (!Number.isFinite(quota) || quota < 1 || quota > 50) {
+      return setError('Quota must be between 1 and 50 trees per staff member.')
+    }
+    // The field is labelled "Mandatory" and staff read it as the list of
+    // parameters they must submit against, so a published event with none would
+    // be a promise the portal does not keep. Drafts stay permissive — that is
+    // the point of a draft.
+    if (publish && form.metrics.length === 0) {
+      return setError('Select at least one mandatory metric before publishing.')
+    }
+    setError(null)
+
+    const draft: EventDraft = {
+      title: form.title,
+      description: form.description,
+      plantFrom: form.plantFrom,
+      plantTo: form.plantTo,
+      quota: form.quota,
+      start: form.start,
+      end: form.end,
+      zone: form.zone,
+      boundary: form.boundary,
+      guidelines: form.guidelines,
+      metrics: form.metrics,
+    }
+    storeActions.createEvent(draft, publish)
+    onClose()
+  }
 
   return (
     <div className="overlay">
@@ -287,23 +302,55 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="col-span-2">
-              <label className="field-label mb-2">Mandatory Metrics</label>
-              <div className="flex flex-wrap gap-2">
-                {metricOptions.map(m => (
-                  <button
-                    key={m}
-                    onClick={() => toggleMetric(m)}
-                    className="btn btn-sm"
-                    style={{
-                      borderColor: form.metrics.includes(m) ? 'var(--accent)' : 'var(--border)',
-                      background: form.metrics.includes(m) ? 'var(--accent-soft)' : '#fff',
-                      color: form.metrics.includes(m) ? 'var(--accent-dark)' : 'var(--text-muted)',
-                    }}
-                  >
-                    {form.metrics.includes(m) ? '✓ ' : ''}{m}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="field-label mb-0">
+                  Mandatory Metrics
+                  <span className="ml-2 font-normal" style={{ color: 'var(--text-faint)' }}>
+                    {form.metrics.length} of {METRIC_OPTIONS.length} selected
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={toggleAllMetrics}
+                  className="btn btn-sm"
+                  style={{ color: 'var(--accent-dark)', borderColor: 'var(--accent)' }}
+                  aria-pressed={allMetricsSelected}
+                >
+                  {allMetricsSelected ? 'Clear all' : 'Select all'}
+                </button>
               </div>
+
+              <div
+                className="flex flex-wrap gap-2"
+                role="group"
+                aria-label="Mandatory verification metrics"
+              >
+                {METRIC_OPTIONS.map(m => {
+                  const on = form.metrics.includes(m)
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => toggleMetric(m)}
+                      className="btn btn-sm"
+                      aria-pressed={on}
+                      style={{
+                        borderColor: on ? 'var(--accent)' : 'var(--border)',
+                        background: on ? 'var(--accent-soft)' : '#fff',
+                        color: on ? 'var(--accent-dark)' : 'var(--text-muted)',
+                      }}
+                    >
+                      {on ? '✓ ' : ''}{m}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {form.metrics.length === 0 && (
+                <p className="mt-2 text-[11px]" style={{ color: 'var(--text-faint)' }}>
+                  No metrics selected. A draft can be saved without any; publishing requires at least one.
+                </p>
+              )}
             </div>
 
             <div className="col-span-2">
@@ -318,18 +365,57 @@ function CreateEventForm({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        {error && (
+          <div
+            className="mx-5 mt-3 flex items-start gap-2 px-3 py-2.5 rounded text-xs"
+            style={{ background: 'var(--danger-soft)', border: '1px solid rgba(220,58,58,0.3)', color: 'var(--danger)' }}
+            role="alert"
+          >
+            <span>⚠</span>
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="modal-footer">
           <button onClick={onClose} className="btn">Cancel</button>
-          <button className="btn">Save as Draft</button>
-          <button className="btn btn-primary">Publish Event</button>
+          <button onClick={() => submit(false)} className="btn">Save as Draft</button>
+          <button onClick={() => submit(true)} className="btn btn-primary">Publish Event</button>
         </div>
       </div>
     </div>
   )
 }
 export default function EventManagement() {
+  const { events, storeActions } = usePortal()
   const [showCreate, setShowCreate] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<typeof events[0] | null>(null)
+  // Held as an id so the dashboard always renders the live row: after Extend
+  // Quotas the old object would still show the pre-action end date.
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [yearFilter, setYearFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [quotaDraft, setQuotaDraft] = useState<{ id: string; value: string } | null>(null)
+
+  const selectedEvent = selectedId ? (events.find(e => e.id === selectedId) ?? null) : null
+
+  const years = useMemo(
+    () => [...new Set(events.map(e => e.year))].sort((a, b) => b.localeCompare(a)),
+    [events],
+  )
+
+  const visibleEvents = events.filter(e => {
+    if (yearFilter !== 'all' && e.year !== yearFilter) return false
+    if (statusFilter !== 'all' && e.status !== statusFilter) return false
+    return true
+  })
+
+  const exportLog = (ev: PortalEvent) => {
+    const n = downloadCsv(
+      `ecotrace_event_${ev.id}_log.csv`,
+      ['Event', 'Event ID', 'S.Y.', 'Zone', 'Start', 'End', 'Quota / staff', 'Staff', 'Target', 'Verified', 'Pending', 'Incidents', 'Status'],
+      [[ev.name, ev.id, ev.year, ev.zone, ev.start, ev.end, ev.quota, ev.staff, ev.target, ev.verified, ev.pending, ev.incidents, ev.status]],
+    )
+    storeActions.recordExport(`Exported ${ev.name} (${ev.id}) summary (CSV)`, n)
+  }
 
   return (
     <div>
@@ -358,35 +444,100 @@ export default function EventManagement() {
                 {selectedEvent.zone} · {selectedEvent.start} → {selectedEvent.end}
               </div>
             </div>
-            <div className="flex gap-2">
-              <button className="btn btn-sm">Extend Event</button>
-              <button className="btn btn-sm">Reassign Quotas</button>
-              <button className="btn btn-sm btn-primary">Export Log ↓</button>
-              <button onClick={() => setSelectedEvent(null)} className="btn btn-sm">✕</button>
+            <div className="flex gap-2 items-start">
+              {quotaDraft && quotaDraft.id === selectedEvent.id ? (
+                <>
+                  <input
+                    className="input text-xs"
+                    style={{ width: 70 }}
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={quotaDraft.value}
+                    autoFocus
+                    aria-label="New quota per staff member"
+                    onChange={e => setQuotaDraft({ ...quotaDraft, value: e.target.value })}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        storeActions.reassignQuotas(selectedEvent.id, Number(quotaDraft.value))
+                        setQuotaDraft(null)
+                      }
+                      if (e.key === 'Escape') setQuotaDraft(null)
+                    }}
+                  />
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={() => {
+                      storeActions.reassignQuotas(selectedEvent.id, Number(quotaDraft.value))
+                      setQuotaDraft(null)
+                    }}
+                  >
+                    Apply
+                  </button>
+                  <button className="btn btn-sm" onClick={() => setQuotaDraft(null)}>Cancel</button>
+                </>
+              ) : (
+                <button
+                  className="btn btn-sm"
+                  onClick={() => setQuotaDraft({ id: selectedEvent.id, value: String(selectedEvent.quota) })}
+                  title="Set a new trees-per-staff quota for this event"
+                >
+                  Reassign Quotas
+                </button>
+              )}
+              <button
+                className="btn btn-sm"
+                onClick={() => storeActions.extendEvent(selectedEvent.id, 7)}
+                title="Move the end date out by 7 days"
+              >
+                Extend +7 days
+              </button>
+              <button className="btn btn-sm btn-primary" onClick={() => exportLog(selectedEvent)}>
+                Export Log ↓
+              </button>
+              <button onClick={() => setSelectedId(null)} className="btn btn-sm" aria-label="Close event dashboard">✕</button>
             </div>
           </div>
           <div className="grid grid-cols-5 divide-x" style={{ borderBottom: '1px solid var(--border)' }}>
-            {[
-              { label: 'Target Trees', value: selectedEvent.target.toLocaleString(), sub: `${selectedEvent.quota} / staff` },
-              { label: 'Verified', value: selectedEvent.verified.toLocaleString(), sub: `${Math.round(selectedEvent.verified / selectedEvent.target * 100)}% complete`, color: 'var(--accent)' },
-              { label: 'Active Staff', value: selectedEvent.staff.toLocaleString(), sub: `S.Y. ${selectedEvent.year}` },
-              { label: 'Pending', value: selectedEvent.pending, sub: 'awaiting review', color: 'var(--warning)' },
-              { label: 'Incidents', value: selectedEvent.incidents, sub: 'reports filed', color: 'var(--danger)' },
-            ].map((s, i) => (
-              <div key={i} className="px-5 py-3.5">
-                <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{s.label}</div>
-                <div className="text-xl font-semibold" style={{ color: s.color || 'var(--text)' }}>{s.value}</div>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.sub}</div>
-              </div>
-            ))}
+            {(() => {
+              // A brand-new event has no staff assigned yet, so there is no
+              // meaningful completion figure. Show '—' rather than inventing 0%.
+              const pct = eventProgress(selectedEvent)
+              return [
+                {
+                  label: 'Target Trees',
+                  value: selectedEvent.target > 0 ? selectedEvent.target.toLocaleString() : '—',
+                  sub: `${selectedEvent.quota} / staff`,
+                },
+                {
+                  label: 'Verified',
+                  value: selectedEvent.verified.toLocaleString(),
+                  sub: pct === null ? 'awaiting staff assignment' : `${pct}% complete`,
+                  color: 'var(--accent)',
+                },
+                {
+                  label: 'Active Staff',
+                  value: selectedEvent.staff > 0 ? selectedEvent.staff.toLocaleString() : '—',
+                  sub: `S.Y. ${selectedEvent.year}`,
+                },
+                { label: 'Pending', value: selectedEvent.pending, sub: 'awaiting review', color: 'var(--warning)' },
+                { label: 'Incidents', value: selectedEvent.incidents, sub: 'reports filed', color: 'var(--danger)' },
+              ].map((s, i) => (
+                <div key={i} className="px-5 py-3.5">
+                  <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{s.label}</div>
+                  <div className="text-xl font-semibold" style={{ color: s.color || 'var(--text)' }}>{s.value}</div>
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.sub}</div>
+                </div>
+              ))
+            })()}
           </div>
           <div className="px-5 py-2.5">
             <div className="flex items-center gap-2">
               <div className="progress flex-1">
-                <div style={{ width: `${Math.round(selectedEvent.verified / selectedEvent.target * 100)}%` }} />
+                <div style={{ width: `${eventProgress(selectedEvent) ?? 0}%` }} />
               </div>
               <span className="text-xs font-medium mono" style={{ color: 'var(--text-muted)' }}>
-                {Math.round(selectedEvent.verified / selectedEvent.target * 100)}% verified
+                {eventProgress(selectedEvent) === null ? 'No target set' : `${eventProgress(selectedEvent)}% verified`}
               </span>
             </div>
           </div>
@@ -397,16 +548,29 @@ export default function EventManagement() {
         <div className="card-header flex items-center justify-between">
           <h2 className="card-title">All Events</h2>
           <div className="flex items-center gap-2">
-            <select className="select" style={{ width: 'auto', padding: '5px 10px' }}>
-              <option>All Years</option>
-              <option>2025–2026</option>
-              <option>2024–2025</option>
+            <select
+              className="select"
+              style={{ width: 'auto', padding: '5px 10px' }}
+              value={yearFilter}
+              onChange={e => setYearFilter(e.target.value)}
+              aria-label="Filter by school year"
+            >
+              <option value="all">All Years</option>
+              {years.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
             </select>
-            <select className="select" style={{ width: 'auto', padding: '5px 10px' }}>
-              <option>All Status</option>
-              <option>Active</option>
-              <option>Completed</option>
-              <option>Draft</option>
+            <select
+              className="select"
+              style={{ width: 'auto', padding: '5px 10px' }}
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              aria-label="Filter by status"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="draft">Draft</option>
             </select>
           </div>
         </div>
@@ -425,13 +589,13 @@ export default function EventManagement() {
             </tr>
           </thead>
           <tbody>
-            {events.map((ev) => {
-              const pct = Math.round((ev.verified / ev.target) * 100)
+            {visibleEvents.map((ev) => {
+              const pct = eventProgress(ev)
               return (
                 <tr
                   key={ev.id}
                   className="cursor-pointer"
-                  onClick={() => setSelectedEvent(ev)}
+                  onClick={() => setSelectedId(ev.id)}
                 >
                   <td>
                     <div className="font-medium">{ev.name}</div>
@@ -445,13 +609,13 @@ export default function EventManagement() {
                   <td className="num mono">{ev.staff.toLocaleString()}</td>
                   <td className="num">
                     <div className="mono">
-                      {ev.verified.toLocaleString()} / {ev.target.toLocaleString()}
+                      {ev.verified.toLocaleString()} / {ev.target > 0 ? ev.target.toLocaleString() : '—'}
                     </div>
                     <div className="flex items-center justify-end gap-1.5 mt-1">
                       <div className="progress" style={{ width: 50 }}>
-                        <div style={{ width: `${pct}%` }} />
+                        <div style={{ width: `${pct ?? 0}%` }} />
                       </div>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{pct}%</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{pct === null ? '—' : `${pct}%`}</span>
                     </div>
                   </td>
                   <td className="num">
@@ -465,13 +629,27 @@ export default function EventManagement() {
                     </span>
                   </td>
                   <td className="text-right">
-                    <button className="btn btn-sm">View</button>
+                    <button
+                      className="btn btn-sm"
+                      onClick={e => {
+                        e.stopPropagation()
+                        setSelectedId(ev.id)
+                      }}
+                    >
+                      View
+                    </button>
                   </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
+
+        {visibleEvents.length === 0 && (
+          <div className="py-12 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+            No events match the current year and status filters.
+          </div>
+        )}
       </div>
     </div>
   )

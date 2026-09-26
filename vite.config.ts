@@ -29,15 +29,33 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    // Dev/preview proxy for the Node.js REST API (see INTEGRATION_PROGRESS_LOG.md).
+    // Proxying same-origin under `/api` keeps the browser out of CORS entirely
+    // during development; production deployments should terminate this at the
+    // reverse proxy (nginx/IIS) or set VITE_API_BASE_URL to an absolute origin.
     server: {
       host: '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
       watch: { ignored: ['**/.figma/**'] },
+      proxy: {
+        '/api': {
+          target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
     preview: {
       host: '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
+      proxy: {
+        '/api': {
+          target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
   }
 })

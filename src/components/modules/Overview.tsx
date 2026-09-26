@@ -1,3 +1,5 @@
+import { activeEvents, eventProgress, usePortal } from '../../lib/store'
+
 interface StatCardProps {
   label: string
   value: string | number
@@ -24,43 +26,80 @@ function StatCard({ label, value, sub, color = 'var(--text)', delta, positive }:
   )
 }
 
-const recentActivity = [
-  { time: '10:42 AM', admin: 'Admin Jane', action: 'Approved 45 submissions via batch', type: 'approve' },
-  { time: '10:15 AM', admin: 'Admin Rex', action: 'Declined 3 submissions — Inaccurate Photo', type: 'decline' },
-  { time: '09:51 AM', admin: 'Admin Jane', action: 'Created Event: Arbor Day Drive 2026', type: 'create' },
-  { time: '09:30 AM', admin: 'Admin Carl', action: 'Flagged incident: Destroyed planting area (Zone B)', type: 'incident' },
-  { time: '08:55 AM', admin: 'System', action: 'High-priority incident report received from J. Santos', type: 'incident' },
-  { time: '08:20 AM', admin: 'Admin Jane', action: 'Extended event deadline by 7 days: Earth Month 2026', type: 'create' },
-  { time: 'Yesterday', admin: 'Admin Rex', action: 'Exported verification log (PDF) for Earth Month 2026', type: 'export' },
-]
-
+/** Audit actions mapped to the badge tones used in the activity feed. */
 const typeStyle: Record<string, string> = {
-  approve: 'badge-accent',
-  decline: 'badge-warning',
-  create: 'badge-info',
-  incident: 'badge-danger',
-  export: 'badge-neutral',
+  BATCH_APPROVE: 'badge-accent',
+  SINGLE_APPROVE: 'badge-accent',
+  BATCH_DECLINE: 'badge-warning',
+  SINGLE_DECLINE: 'badge-warning',
+  BATCH_RESUBMIT: 'badge-info',
+  EVENT_CREATE: 'badge-info',
+  EVENT_PUBLISH: 'badge-info',
+  EVENT_EXTEND: 'badge-info',
+  QUOTA_REASSIGN: 'badge-info',
+  INCIDENT_FLAG: 'badge-danger',
+  ALERT_SENT: 'badge-danger',
+  EXPORT: 'badge-neutral',
+  STAFF_EXEMPT: 'badge-neutral',
 }
 
-const activeEvents = [
-  { name: 'Arbor Day Drive 2026', daysLeft: 8, verified: 1680, target: 2250, staff: 45 },
-  { name: 'Earth Month Campaign', daysLeft: 22, verified: 420, target: 1000, staff: 20 },
-  { name: 'Campus Reforestation Q2', daysLeft: 45, verified: 95, target: 750, staff: 15 },
-]
+/** '2026-04-28 10:42:31' -> '10:42 AM', or 'Yesterday, 08:55 AM' / a date. */
+function shortTime(stamp: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/.exec(stamp ?? '')
+  if (!m) return stamp
+  const hours = Number(m[2])
+  const clock = `${((hours + 11) % 12) + 1}:${m[3]} ${hours < 12 ? 'AM' : 'PM'}`
+  const isoOfDay = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  if (m[1] === isoOfDay(new Date())) return clock
+  if (m[1] === isoOfDay(new Date(Date.now() - 86400000))) return `Yesterday, ${clock}`
+  return `${m[1]} ${clock}`
+}
+
 export default function Overview() {
+  const { events, logs, pendingCount, incidentCount, submissions } = usePortal()
+
+  // Every figure below is derived. The dashboard used to hard-code
+  // 2,195 / 80 / 47 / 12, so approving a submission changed nothing here and the
+  // sidebar badge said 47 no matter what was approved.
+  const running = activeEvents(events)
+  const totalVerified = running.reduce((n, e) => n + e.verified, 0)
+  const totalTarget = running.reduce((n, e) => n + e.target, 0)
+  const totalStaff = running.reduce((n, e) => n + e.staff, 0)
+  const feed = logs.slice(0, 7)
+  const approvedCount = submissions.filter(s => s.status === 'approved').length
+  const declinedCount = submissions.filter(s => s.status === 'declined').length
+
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-xl font-semibold mb-1">Command Overview</h1>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>S.Y. 2025–2026 · 3 Active Events · Last updated 10:45 AM</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          S.Y. 2025–2026 · {running.length} Active Event{running.length === 1 ? '' : 's'} · Updated {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </p>
       </div>
 
       {/* Top Stats */}
       <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <StatCard label="Total Trees Verified" value="2,195" sub="of 4,000 target" delta="12% this week" positive />
-        <StatCard label="Active Staff" value="80" sub="across 3 events" />
-        <StatCard label="Pending Submissions" value="47" sub="awaiting review" color="var(--warning)" />
-        <StatCard label="Incident Reports" value="12" sub="high-priority: 2" color="var(--danger)" delta="3 new today" positive={false} />
+        <StatCard
+          label="Total Trees Verified"
+          value={totalVerified.toLocaleString()}
+          sub={totalTarget > 0 ? `of ${totalTarget.toLocaleString()} target` : 'no targets set yet'}
+          delta={`${approvedCount} approved here`}
+          positive
+        />
+        <StatCard
+          label="Active Staff"
+          value={totalStaff > 0 ? totalStaff.toLocaleString() : '—'}
+          sub={`across ${running.length} event${running.length === 1 ? '' : 's'}`}
+        />
+        <StatCard label="Pending Submissions" value={pendingCount} sub="awaiting review" color="var(--warning)" />
+        <StatCard
+          label="Incident Reports"
+          value={incidentCount}
+          sub={`${declinedCount} declined by an admin`}
+          color="var(--danger)"
+        />
       </div>
 
       <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 320px' }}>
@@ -68,32 +107,37 @@ export default function Overview() {
         <div className="card">
           <div className="card-header flex items-center justify-between">
             <h2 className="card-title">Active Events</h2>
-            <span className="badge badge-accent">3 running</span>
+            <span className="badge badge-accent">{running.length} running</span>
           </div>
-          {activeEvents.map((ev) => {
-            const pct = Math.round((ev.verified / ev.target) * 100)
+          {running.length === 0 && (
+            <div className="px-4 py-10 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+              No active events. Create one in Event Management.
+            </div>
+          )}
+          {running.map((ev) => {
+            const pct = eventProgress(ev)
             return (
-              <div key={ev.name} className="px-4 py-3.5 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+              <div key={ev.id} className="px-4 py-3.5 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex items-start justify-between mb-2.5">
                   <div>
                     <div className="text-sm font-medium">{ev.name}</div>
                     <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      {ev.staff.toLocaleString()} staff members · {ev.daysLeft}d remaining
+                      {ev.staff > 0 ? `${ev.staff.toLocaleString()} staff members · ` : ''}ends {ev.end}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-semibold mono" style={{ color: 'var(--accent-dark)' }}>
-                      {ev.verified.toLocaleString()} / {ev.target.toLocaleString()}
+                      {ev.verified.toLocaleString()} / {ev.target > 0 ? ev.target.toLocaleString() : '—'}
                     </div>
                     <div className="text-xs" style={{ color: 'var(--text-muted)' }}>trees</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="progress flex-1">
-                    <div style={{ width: `${pct}%`, background: pct > 80 ? 'var(--accent)' : pct > 40 ? 'var(--warning)' : 'var(--accent-dark)' }} />
+                    <div style={{ width: `${pct ?? 0}%`, background: (pct ?? 0) > 80 ? 'var(--accent)' : (pct ?? 0) > 40 ? 'var(--warning)' : 'var(--accent-dark)' }} />
                   </div>
                   <span className="text-xs font-medium mono" style={{ color: 'var(--text-muted)', minWidth: 34 }}>
-                    {pct}%
+                    {pct === null ? '—' : `${pct}%`}
                   </span>
                 </div>
               </div>
@@ -101,21 +145,26 @@ export default function Overview() {
           })}
         </div>
 
-        {/* Activity Log */}
+        {/* Activity Log — fed by the same audit rows the Audit Logs tab shows */}
         <div className="card">
           <div className="card-header">
             <h2 className="card-title">Recent Activity</h2>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: 340 }}>
-            {recentActivity.map((item, i) => (
-              <div key={i} className="flex gap-3 px-4 py-3 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                <span className={`badge ${typeStyle[item.type] || typeStyle.create}`} style={{ padding: '1px 7px', alignSelf: 'flex-start' }}>
+            {feed.length === 0 && (
+              <div className="px-4 py-10 text-center text-xs" style={{ color: 'var(--text-faint)' }}>
+                No activity yet
+              </div>
+            )}
+            {feed.map((item) => (
+              <div key={item.id} className="flex gap-3 px-4 py-3 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+                <span className={`badge ${typeStyle[item.action] || 'badge-neutral'}`} style={{ padding: '1px 7px', alignSelf: 'flex-start' }}>
                   •
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs leading-snug" style={{ color: 'var(--text)' }}>{item.action}</div>
+                  <div className="text-xs leading-snug" style={{ color: 'var(--text)' }}>{item.detail}</div>
                   <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
-                    {item.admin} · {item.time}
+                    {item.admin} · {shortTime(item.time)}
                   </div>
                 </div>
               </div>

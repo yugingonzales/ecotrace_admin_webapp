@@ -25,6 +25,23 @@ export const ZONES: ZoneInfo[] = [
 
 export const MAP_CENTER: [number, number] = [12.5113, 124.6641]
 
+/**
+ * Event `zone` label -> surveyed planting zone. Lived privately inside
+ * EventBoundaryEditor; promoted here so MapView's event filter and the boundary
+ * editor can never disagree about which zone an event label means.
+ */
+export const ZONE_LABEL_TO_NAME: Record<string, ZoneName> = {
+  'Zone A – Main Campus': 'Zone I',
+  'Zone B – Annex Field': 'Zone III',
+  'Zone C – Hillside Reserve': 'Zone II',
+}
+
+/** Reverse lookup, for showing a surveyed zone back as an event label. */
+export function zoneNameToLabel(name: ZoneName): string | null {
+  for (const [label, zone] of Object.entries(ZONE_LABEL_TO_NAME)) if (zone === name) return label
+  return null
+}
+
 export const CAMPUS_BOUNDS: VBounds = {
   minLat: 12.509,
   minLng: 124.6604,

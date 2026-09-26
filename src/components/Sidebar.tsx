@@ -1,11 +1,16 @@
 import uepLogo from '../assets/uep_logo.jpg'
-
-type Module = 'overview' | 'events' | 'submissions' | 'map' | 'analytics' | 'logs'
+import type { Module } from '../lib/store'
 
 interface SidebarProps {
   active: Module
   onNavigate: (m: Module) => void
   user?: { name: string; email?: string }
+  /**
+   * Pending-submission count from the store. This badge used to be a hard-coded
+   * `47` that no action could ever move — it now tracks real state, so approving
+   * something in Submissions visibly decrements it.
+   */
+  pendingCount: number
 }
 
 function getInitials(name: string): string {
@@ -52,7 +57,6 @@ const nav = [
         <path d="M12.3 11l.5.5 1-1" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    badge: 47,
   },
   {
     id: 'map' as Module,
@@ -86,7 +90,7 @@ const nav = [
   },
 ]
 
-export default function Sidebar({ active, onNavigate, user }: SidebarProps) {
+export default function Sidebar({ active, onNavigate, user, pendingCount }: SidebarProps) {
   return (
     <aside
       className="flex flex-col"
@@ -127,6 +131,7 @@ export default function Sidebar({ active, onNavigate, user }: SidebarProps) {
         </div>
         {nav.map((item) => {
           const isActive = active === item.id
+          const badge = item.id === 'submissions' && pendingCount > 0 ? pendingCount : null
           return (
             <button
               key={item.id}
@@ -140,8 +145,14 @@ export default function Sidebar({ active, onNavigate, user }: SidebarProps) {
             >
               <span style={{ color: isActive ? 'var(--accent-dark)' : 'var(--text-faint)' }}>{item.icon}</span>
               <span className="text-xs flex-1">{item.label}</span>
-              {item.badge && (
-                <span className="badge badge-danger" style={{ padding: '0 6px' }}>{item.badge}</span>
+              {badge !== null && (
+                <span
+                  className="badge badge-danger"
+                  style={{ padding: '0 6px' }}
+                  title={`${badge} pending submission${badge === 1 ? '' : 's'}`}
+                >
+                  {badge}
+                </span>
               )}
             </button>
           )

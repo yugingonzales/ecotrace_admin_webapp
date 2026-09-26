@@ -1,7 +1,13 @@
+import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
 } from 'recharts'
+import { usePortal } from '../../lib/store'
+import { downloadCsv } from '../../lib/csv'
+
+/** Staff rows per page for the progress table. */
+const STAFF_PAGE_SIZE = 5
 
 const weeklyVerifications = [
   { day: 'Mon', approved: 14, declined: 8, incidents: 3 },
@@ -30,16 +36,9 @@ const incidentTypes = [
   { name: 'Restricted Area', value: 8, color: '#ec4899' },
 ]
 
-const staffProgress = [
-  { name: 'Juan Santos', id: 'STF-001', staffType: 'Paid Volunteer', verified: 5, quota: 5, rate: 100 },
-  { name: 'Ana Lim', id: 'STF-004', staffType: 'Staff', verified: 5, quota: 5, rate: 100 },
-  { name: 'Marc Tan', id: 'STF-002', staffType: 'Intern', verified: 4, quota: 5, rate: 80 },
-  { name: 'Sofia Torres', id: 'STF-006', staffType: 'Paid Volunteer', verified: 4, quota: 5, rate: 80 },
-  { name: 'Carlo Diaz', id: 'STF-003', staffType: 'Staff', verified: 3, quota: 5, rate: 60 },
-  { name: 'Rico Mendoza', id: 'STF-007', staffType: 'Intern', verified: 3, quota: 5, rate: 60 },
-  { name: 'Lena Bautista', id: 'STF-008', staffType: 'Paid Volunteer', verified: 2, quota: 5, rate: 40 },
-  { name: 'Kim Garcia', id: 'STF-009', staffType: 'Staff', verified: 1, quota: 5, rate: 20 },
-]
+// `staffProgress` used to be a hard-coded 8-row table that no filter or button
+// could touch. It is now derived from the store's submissions, so approving a
+// submission in Submissions moves the bar here.
 
 const monthlyTrend = [
   { month: 'Jan', verified: 120, incidents: 5 },
@@ -60,29 +59,112 @@ const tooltipStyle = {
   labelStyle: { color: 'var(--text-muted)', fontSize: 11 },
 }
 export default function Analytics() {
+  const { events, submissions, storeActions } = usePortal()
+  const [eventFilter, setEventFilter] = useState('all')
+  const [staffType, setStaffType] = useState('all')
+  const [staffSearch, setStaffSearch] = useState('')
+  const [staffLimit, setStaffLimit] = useState(STAFF_PAGE_SIZE)
+
+  const relevant = eventFilter === 'all'
+    ? submissions
+    : submissions.filter(s => s.event === eventFilter)
+
+  /**
+   * Per-staff approval progress, computed from the submissions themselves.
+   *
+   * The old table claimed a "quota" of 5 trees per staff, which no field in the
+   * data supports — the event quota is 50 trees per staff and no staff roster
+   * endpoint exists yet. The honest, computable figure is "approved out of
+   * submitted", so that is what this shows.
+   */
+  const staffProgress = useMemo(() => {
+    const byStaff = new Map<string, { name: string; id: string; staffType: string; total: number; approved: number }>()
+    for (const s of relevant) {
+      const row = byStaff.get(s.staffId) ?? { name: s.staffName, id: s.staffId, staffType: s.staffType, total: 0, approved: 0 }
+      row.total += 1
+      if (s.status === 'approved') row.approved += 1
+      byStaff.set(s.staffId, row)
+    }
+    return [...byStaff.values()]
+      .map(r => ({ ...r, rate: r.total > 0 ? Math.round((r.approved / r.total) * 100) : 0 }))
+      .sort((a, b) => b.rate - a.rate || a.name.localeCompare(b.name))
+  }, [relevant])
+
+  const needle = staffSearch.trim().toLowerCase()
+  const visibleStaff = staffProgress.filter(s => {
+    if (staffType !== 'all' && s.staffType !== staffType) return false
+    if (needle && ![s.name, s.id, s.staffType].some(v => v.toLowerCase().includes(needle))) return false
+    return true
+  })
+
+  const exportCsv = () => {
+    const n = downloadCsv(
+      `ecotrace_analytics_${eventFilter === 'all' ? 'all_events' : eventFilter.replace(/\W+/g, '_').toLowerCase()}.csv`,
+      ['Event', 'Staff', 'Staff ID', 'Staff Type', 'Submissions', 'Approved', 'Approval Rate %'],
+      relevant.map(s => [s.event, s.staffName, s.staffId, s.staffType, 1, s.status === 'approved' ? 1 : 0, s.status === 'approved' ? 100 : 0]),
+    )
+    storeActions.recordExport(`Exported analytics submissions (CSV) — ${n.toLocaleString()} records`, n)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-semibold mb-1">Analytics & Progress</h1>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>S.Y. 2025–2026 · Arbor Day Drive 2026 (active)</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            S.Y. 2025–2026 · {eventFilter === 'all' ? 'All events' : eventFilter}
+          </p>
         </div>
         <div className="flex gap-2 text-xs">
-          <select className="select text-xs" style={{ width: 'auto' }}>
-            <option>Arbor Day Drive 2026</option>
-            <option>Earth Month Campaign</option>
+          <select
+            className="select text-xs"
+            style={{ width: 'auto' }}
+            value={eventFilter}
+            onChange={e => { setEventFilter(e.target.value); setStaffLimit(STAFF_PAGE_SIZE) }}
+            aria-label="Filter by event"
+          >
+            <option value="all">All Events</option>
+            {events.map(ev => (
+              <option key={ev.id} value={ev.name}>{ev.name}</option>
+            ))}
           </select>
-          <button className="btn btn-sm btn-primary">Export PDF ↓</button>
+          <button className="btn btn-sm btn-primary" onClick={exportCsv}>
+            Export CSV ↓
+          </button>
         </div>
       </div>
 
-      {/* Top KPIs */}
+      {/* Top KPIs — derived from the same filtered slice as the table below. */}
       <div className="grid grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Overall Survival Rate', value: '92.4%', sub: 'across 1,940 verified trees', color: 'var(--accent)' },
-          { label: 'Avg. Quota Completion', value: '76.8%', sub: 'per staff member', color: 'var(--accent-dark)' },
-          { label: 'Incident Rate', value: '2.4%', sub: 'of all submissions', color: 'var(--warning)' },
-          { label: 'Batch Efficiency', value: '94.1%', sub: 'batch vs. single approvals', color: 'var(--info)' },
+          {
+            label: 'Submission Approval Rate',
+            value: relevant.length > 0
+              ? `${Math.round((relevant.filter(s => s.status === 'approved').length / relevant.length) * 100)}%`
+              : '—',
+            sub: `${relevant.filter(s => s.status === 'approved').length} of ${relevant.length} submissions`,
+            color: 'var(--accent)',
+          },
+          {
+            label: 'Awaiting Review',
+            value: relevant.filter(s => s.status === 'pending').length.toLocaleString(),
+            sub: 'still pending',
+            color: 'var(--warning)',
+          },
+          {
+            label: 'Incident Rate',
+            value: relevant.length > 0
+              ? `${((relevant.filter(s => s.type === 'incident').length / relevant.length) * 100).toFixed(1)}%`
+              : '—',
+            sub: 'of submissions in scope',
+            color: 'var(--danger)',
+          },
+          {
+            label: 'Staff Submitting',
+            value: staffProgress.length.toLocaleString(),
+            sub: 'distinct staff IDs',
+            color: 'var(--info)',
+          },
         ].map(k => (
           <div key={k.label} className="card p-4">
             <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{k.label}</div>
@@ -187,15 +269,28 @@ export default function Analytics() {
       {/* Staff Progress Tracker */}
       <div className="card">
         <div className="card-header flex items-center justify-between">
-          <h3 className="card-title">Staff Quota Progress</h3>
+          <h3 className="card-title">Staff Submission Progress</h3>
           <div className="flex gap-2 text-xs">
-            <select className="select text-xs" style={{ width: 'auto' }}>
-              <option>All Staff Types</option>
-              <option>Paid Volunteer</option>
+            <select
+              className="select text-xs"
+              style={{ width: 'auto' }}
+              value={staffType}
+              onChange={e => { setStaffType(e.target.value); setStaffLimit(STAFF_PAGE_SIZE) }}
+              aria-label="Filter by staff type"
+            >
+              <option value="all">All Staff Types</option>
+              <option>Volunteer</option>
               <option>Staff</option>
               <option>Intern</option>
             </select>
-            <input className="input text-xs" style={{ width: 150 }} placeholder="Search staff..." />
+            <input
+              className="input text-xs"
+              style={{ width: 150 }}
+              placeholder="Search staff..."
+              value={staffSearch}
+              onChange={e => { setStaffSearch(e.target.value); setStaffLimit(STAFF_PAGE_SIZE) }}
+              aria-label="Search staff"
+            />
           </div>
         </div>
         <table className="table">
@@ -203,13 +298,21 @@ export default function Analytics() {
             <tr>
               <th>Staff</th>
               <th>Staff Type</th>
-              <th className="num">Progress</th>
-              <th style={{ width: 160 }}>Quota Bar</th>
+              <th className="num">Submissions</th>
+              <th className="num">Approved</th>
+              <th style={{ width: 160 }}>Approval</th>
               <th className="num">Rate</th>
             </tr>
           </thead>
           <tbody>
-            {staffProgress.map((s) => {
+            {visibleStaff.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                  No staff match the current filters.
+                </td>
+              </tr>
+            )}
+            {visibleStaff.slice(0, staffLimit).map((s) => {
               const color = s.rate === 100 ? 'var(--accent)' : s.rate >= 60 ? 'var(--warning)' : 'var(--danger)'
               return (
                 <tr key={s.id}>
@@ -218,16 +321,16 @@ export default function Analytics() {
                     <div className="mono" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{s.id}</div>
                   </td>
                   <td style={{ color: 'var(--text-muted)' }}>{s.staffType}</td>
-                  <td className="num font-medium mono">
-                    {s.verified}/{s.quota} trees
-                  </td>
+                  <td className="num font-medium mono">{s.total}</td>
+                  <td className="num font-medium mono">{s.approved}</td>
                   <td>
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: s.quota }, (_, i) => (
+                      {Array.from({ length: s.total }, (_, i) => (
                         <div
                           key={i}
                           className="flex-1 rounded-sm"
-                          style={{ height: 8, background: i < s.verified ? color : 'var(--surface-muted)' }}
+                          style={{ height: 8, background: i < s.approved ? color : 'var(--surface-muted)' }}
+                          title={i < s.approved ? 'Approved' : 'Not approved'}
                         />
                       ))}
                     </div>
@@ -240,8 +343,15 @@ export default function Analytics() {
             })}
           </tbody>
         </table>
-        <div className="px-4 py-3 border-t text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-          Showing 8 of 45 staff members · <span style={{ color: 'var(--accent-dark)', cursor: 'pointer' }}>Load more →</span>
+        <div className="px-4 py-3 border-t text-xs flex items-center justify-between" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+          <span>Showing {Math.min(staffLimit, visibleStaff.length)} of {visibleStaff.length} staff members</span>
+          {staffLimit < visibleStaff.length ? (
+            <button className="btn btn-sm" onClick={() => setStaffLimit(l => l + STAFF_PAGE_SIZE)}>
+              Load more →
+            </button>
+          ) : (
+            <span />
+          )}
         </div>
       </div>
     </div>

@@ -75,11 +75,20 @@ function monthBounds(isoDate: string): [string, string] | null {
 /**
  * Return every tree that falls inside the event boundary **and** was planted
  * within the supplied date range (normalized to whole months for comparison).
+ *
+ * @param source Candidate trees. Defaults to the bundled fixture, but callers
+ *   that already hold API-backed data should pass it in — otherwise this filter
+ *   silently ignores what the server returned and the event's eligible-tree
+ *   count contradicts the map beside it.
+ *
+ * The filtering stays client-side because `boundary` is a polygon and the
+ * point-in-polygon test has no server equivalent.
  */
 export function treesEligibleForVerification(
   boundary: Boundary,
   plantedFrom: string,
   plantedTo: string,
+  source: TreeMarker[] = trees,
 ): TreeMarker[] {
   if (boundary.length < 3 || !plantedFrom || !plantedTo) return []
 
@@ -87,7 +96,7 @@ export function treesEligibleForVerification(
   const [, upper] = monthBounds(plantedTo) ?? []
   if (!lower || !upper) return []
 
-  return trees.filter(
+  return source.filter(
     t =>
       pointInBoundary(boundary, t.lat, t.lng) &&
       t.plantedIso >= lower &&

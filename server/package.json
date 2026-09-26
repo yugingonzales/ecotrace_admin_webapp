@@ -1,0 +1,20 @@
+{
+  "name": "ecotrace-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Read-only REST API over the real MariaDB ecotrace_db schema.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "migrate": "node scripts/migrate.mjs",
+    "seed": "node ../server/scripts/generate-seed.mjs",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "mysql2": "^3.11.5",
+    "zod": "^3.24.1"
+  }
+}

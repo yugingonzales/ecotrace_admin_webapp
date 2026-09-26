@@ -1,36 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  usePortal,
+  type SubStatus,
+  type SubType,
+  type Submission,
+} from '../../lib/store'
+import { useEscapeToClose, useScrollLock } from '../../lib/useEscapeToClose'
 
-type SubType = 'verification' | 'incident'
-type SubStatus = 'pending' | 'approved' | 'declined' | 'resubmit'
+/** Rows per page. The table previously rendered a hard-coded "1 / 2" pager whose
+ *  Prev/Next buttons did nothing at all. */
+const PAGE_SIZE = 5
 
-interface Submission {
-  id: string
-  staffName: string
-  staffId: string
-  staffType: string
-  treeTag: string
-  species: string
-  type: SubType
-  status: SubStatus
-  event: string
-  date: string
-  lat: string
-  lng: string
-  photo: string
-  incidentType?: string
-  notes?: string
-}
-
-const SUBMISSIONS: Submission[] = [
-  { id: 'SUB-4421', staffName: 'Juan Santos', staffId: 'STF-001', staffType: 'Paid Volunteer', treeTag: 'TRE-0892', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 09:14', lat: '14.6591', lng: '121.0437', photo: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=200&fit=crop&auto=format', notes: 'Tree is healthy, new growth visible.' },
-  { id: 'SUB-4420', staffName: 'Maria Reyes', staffId: 'STF-002', staffType: 'Intern', treeTag: 'TRE-0567', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 08:58', lat: '14.6588', lng: '121.0441', photo: 'https://images.unsplash.com/photo-1503785640985-f62e3aeee448?w=300&h=200&fit=crop&auto=format', incidentType: 'Dead / Uprooted Tree', notes: 'Tree has been uprooted, possibly by recent storm.' },
-  { id: 'SUB-4419', staffName: 'Carlo Diaz', staffId: 'STF-003', staffType: 'Staff', treeTag: 'TRE-1204', species: 'Ipil (Intsia bijuga)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 16:31', lat: '14.6594', lng: '121.0429', photo: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=300&h=200&fit=crop&auto=format' },
-  { id: 'SUB-4418', staffName: 'Ana Lim', staffId: 'STF-004', staffType: 'Paid Volunteer', treeTag: 'TRE-0341', species: 'Mahogany (Swietenia macrophylla)', type: 'verification', status: 'approved', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 14:05', lat: '14.6579', lng: '121.0452', photo: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=300&h=200&fit=crop&auto=format' },
-  { id: 'SUB-4417', staffName: 'Ben Cruz', staffId: 'STF-005', staffType: 'Intern', treeTag: 'TRE-0783', species: 'Banaba (Lagerstroemia speciosa)', type: 'incident', status: 'declined', event: 'Earth Month Campaign', date: 'Apr 27, 2026 11:22', lat: '14.6601', lng: '121.0415', photo: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300&h=200&fit=crop&auto=format', incidentType: 'Location Mismatch' },
-  { id: 'SUB-4416', staffName: 'Sofia Torres', staffId: 'STF-006', staffType: 'Staff', treeTag: 'TRE-1108', species: 'Kamagong (Diospyros blancoi)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 10:44', lat: '14.6585', lng: '121.0460', photo: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=300&h=200&fit=crop&auto=format' },
-  { id: 'SUB-4415', staffName: 'Rico Mendoza', staffId: 'STF-007', staffType: 'Paid Volunteer', treeTag: 'TRE-0223', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Campus Reforestation Q2', date: 'Apr 26, 2026 15:18', lat: '14.6577', lng: '121.0445', photo: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=200&fit=crop&auto=format' },
-  { id: 'SUB-4414', staffName: 'Lena Bautista', staffId: 'STF-008', staffType: 'Intern', treeTag: 'TRE-0950', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 26, 2026 09:33', lat: '14.6596', lng: '121.0432', photo: 'https://images.unsplash.com/photo-1503785640985-f62e3aeee448?w=300&h=200&fit=crop&auto=format', incidentType: 'Pest Infestation' },
-]
 const statusStyle: Record<SubStatus, string> = {
   pending: 'badge-warning',
   approved: 'badge-accent',
@@ -57,6 +37,10 @@ const declineReasons = [
 function DeclineModal({ count, onClose, onConfirm }: { count: number; onClose: () => void; onConfirm: (reason: string, note: string) => void }) {
   const [reason, setReason] = useState('')
   const [note, setNote] = useState('')
+
+  // Sits on top of the detail drawer, so Escape has to close this one first.
+  useEscapeToClose(onClose)
+  useScrollLock()
 
   return (
     <div className="overlay">
@@ -110,9 +94,31 @@ function DeclineModal({ count, onClose, onConfirm }: { count: number; onClose: (
     </div>
   )
 }
-function DetailDrawer({ sub, onClose }: { sub: Submission; onClose: () => void }) {
+/**
+ * Detail drawer. All three footer actions used to be inert `<button>`s; they now
+ * call the same store reducers the batch bar uses, so a single approve writes
+ * the same audit row, toast and notification a batch approve of one would.
+ */
+function DetailDrawer({
+  sub,
+  onClose,
+  onApprove,
+  onDecline,
+  onResubmit,
+}: {
+  sub: Submission
+  onClose: () => void
+  onApprove: () => void
+  onDecline: () => void
+  onResubmit: () => void
+}) {
+  useEscapeToClose(onClose)
+  useScrollLock()
+
   return (
-    <div className="fixed inset-y-0 right-0 z-40 flex flex-col" style={{ width: 460, background: '#fff', borderLeft: '1px solid var(--border)', boxShadow: '-8px 0 30px rgba(16,24,40,0.1)' }}>
+    <>
+      <div className="fixed inset-0 z-30" style={{ background: 'rgba(16,24,40,0.25)' }} onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-40 flex flex-col" style={{ width: 460, background: '#fff', borderLeft: '1px solid var(--border)', boxShadow: '-8px 0 30px rgba(16,24,40,0.1)' }}>
       <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
         <div>
           <div className="flex items-center gap-2">
@@ -166,88 +172,152 @@ function DetailDrawer({ sub, onClose }: { sub: Submission; onClose: () => void }
         )}
       </div>
 
-      {sub.status === 'pending' && (
-        <div className="flex gap-2 p-4 border-t" style={{ borderColor: 'var(--border)' }}>
-          <button className="btn btn-sm flex-1" style={{ background: 'var(--danger-soft)', borderColor: 'transparent', color: 'var(--danger)' }}>Decline</button>
-          <button className="btn btn-sm flex-1" style={{ background: 'var(--info-soft)', borderColor: 'transparent', color: 'var(--info)' }}>Request Re-submit</button>
-          <button className="btn btn-sm btn-primary flex-1">Approve ✓</button>
-        </div>
-      )}
-    </div>
+        {sub.status === 'pending' && (
+          <div className="flex gap-2 p-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <button onClick={onDecline} className="btn btn-sm flex-1" style={{ background: 'var(--danger-soft)', borderColor: 'transparent', color: 'var(--danger)' }}>Decline</button>
+            <button onClick={onResubmit} className="btn btn-sm flex-1" style={{ background: 'var(--info-soft)', borderColor: 'transparent', color: 'var(--info)' }}>Request Re-submit</button>
+            <button onClick={onApprove} className="btn btn-sm btn-primary flex-1">Approve ✓</button>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 export default function SubmissionsView() {
-  const [subs, setSubs] = useState<Submission[]>(SUBMISSIONS)
+  const {
+    submissions,
+    storeActions,
+    pendingCount,
+    incidentCount,
+    focus,
+    clearFocus,
+  } = usePortal()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState<'all' | SubType>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | SubStatus>('all')
+  const [eventFilter, setEventFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [showDecline, setShowDecline] = useState(false)
-  const [drawerSub, setDrawerSub] = useState<Submission | null>(null)
-  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  // Which ids the decline dialog is about. Kept explicit rather than inferred
+  // from `selected`, so the drawer's Decline button can never accidentally act
+  // on an unrelated selection.
+  const [declineTarget, setDeclineTarget] = useState<string[] | null>(null)
+  // Stored as an id, never as the row object: after an action the row object in
+  // the store is a new object, and a drawer holding the old one would keep
+  // rendering the stale "Pending" badge and its action buttons.
+  const [drawerId, setDrawerId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
 
-  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
-  }
+  const drawerSub = drawerId ? (submissions.find(s => s.id === drawerId) ?? null) : null
 
-  const filtered = subs.filter(s => {
+  // Deep link from a notification or from the map: jump to the tree tag and open
+  // its row, or apply the filter the notification was announcing, then release the
+  // focus so a later store update does not re-open it. The effect keys on the
+  // whole focus object, whose nonce makes a repeat click of the same
+  // notification fire again instead of resolving to a no-op.
+  useEffect(() => {
+    if (!focus) return
+    const { treeTag, status, type, event } = focus
+    setPage(1)
+    if (treeTag) {
+      // A tree tag identifies one row, so any active filter has to go or the
+      // drawer would open onto a list the row is not even in.
+      setSearch('')
+      setFilter('all')
+      setStatusFilter('all')
+      setEventFilter('all')
+      const match = submissions.find(s => s.treeTag === treeTag)
+      if (match) setDrawerId(match.id)
+    } else {
+      setDrawerId(null)
+      if (type) setFilter(type)
+      if (status) setStatusFilter(status)
+      if (event) setEventFilter(event)
+    }
+    clearFocus()
+  }, [focus, submissions, clearFocus])
+
+  const eventNames = useMemo(
+    () => [...new Set(submissions.map(s => s.event))].sort((a, b) => a.localeCompare(b)),
+    [submissions],
+  )
+
+  const needle = search.trim().toLowerCase()
+
+  const filtered = submissions.filter(s => {
     if (filter !== 'all' && s.type !== filter) return false
     if (statusFilter !== 'all' && s.status !== statusFilter) return false
-    if (search && ![s.staffName, s.staffId, s.treeTag, s.species].some(v => v.toLowerCase().includes(search.toLowerCase()))) return false
+    if (eventFilter !== 'all' && s.event !== eventFilter) return false
+    if (needle && ![s.staffName, s.staffId, s.treeTag, s.species, s.id, s.event]
+      .some(v => v.toLowerCase().includes(needle))) return false
     return true
   })
 
-  const pendingSelected = [...selected].filter(id => subs.find(s => s.id === id)?.status === 'pending')
+  // Any filter change invalidates the current page — a page 3 that no longer
+  // exists would otherwise render an empty table.
+  useEffect(() => { setPage(1) }, [filter, statusFilter, eventFilter, search])
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount)
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  const pendingSelected = Array.from(selected)
+    .filter(id => submissions.find(s => s.id === id)?.status === 'pending')
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every(s => selected.has(s.id))
 
   const toggleAll = () => {
-    if (selected.size === filtered.length) {
-      setSelected(new Set())
-    } else {
-      setSelected(new Set(filtered.map(s => s.id)))
-    }
+    setSelected(allFilteredSelected ? new Set() : new Set(filtered.map(s => s.id)))
+  }
+
+  const toggleOne = (id: string) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelected(next)
   }
 
   const batchApprove = () => {
-    setSubs(prev => prev.map(s => selected.has(s.id) && s.status === 'pending' ? { ...s, status: 'approved' } : s))
-    showToast(`Approved ${pendingSelected.length} submission${pendingSelected.length > 1 ? 's' : ''}`)
+    storeActions.approveSubmissions(pendingSelected)
     setSelected(new Set())
   }
 
   const batchDecline = (reason: string, note: string) => {
-    setSubs(prev => prev.map(s => selected.has(s.id) && s.status === 'pending' ? { ...s, status: 'declined', notes: `[${reason}] ${note}` } : s))
-    showToast(`Declined ${pendingSelected.length} submission${pendingSelected.length > 1 ? 's' : ''}`, 'error')
+    if (!declineTarget) return
+    storeActions.declineSubmissions(declineTarget, reason, note)
     setSelected(new Set())
-    setShowDecline(false)
+    setDeclineTarget(null)
   }
 
   const batchResubmit = () => {
-    setSubs(prev => prev.map(s => selected.has(s.id) && s.status === 'pending' ? { ...s, status: 'resubmit' } : s))
-    showToast(`Requested re-submission for ${pendingSelected.length} item${pendingSelected.length > 1 ? 's' : ''}`)
+    storeActions.requestResubmit(pendingSelected)
     setSelected(new Set())
+  }
+
+  const singleApprove = () => drawerSub && storeActions.approveSubmissions([drawerSub.id])
+  const singleResubmit = () => drawerSub && storeActions.requestResubmit([drawerSub.id])
+  const singleDecline = () => {
+    if (drawerSub) setDeclineTarget([drawerSub.id])
   }
 
   return (
     <div className="relative">
-      {/* Toast */}
-      {toast && (
-        <div
-          className="fixed top-4 right-4 z-50 text-xs px-4 py-3 rounded-lg"
-          style={{ background: toast.type === 'success' ? 'var(--accent-dark)' : 'var(--danger)', color: 'white', boxShadow: '0 8px 24px rgba(16,24,40,0.15)' }}
-        >
-          {toast.type === 'success' ? '✓' : '✕'} {toast.msg}
-        </div>
-      )}
-
-      {showDecline && (
+      {declineTarget && (
         <DeclineModal
-          count={pendingSelected.length}
-          onClose={() => setShowDecline(false)}
+          count={declineTarget.length}
+          onClose={() => setDeclineTarget(null)}
           onConfirm={batchDecline}
         />
       )}
 
-      {drawerSub && <DetailDrawer sub={drawerSub} onClose={() => setDrawerSub(null)} />}
+      {drawerSub && (
+        <DetailDrawer
+          sub={drawerSub}
+          onClose={() => setDrawerId(null)}
+          onApprove={singleApprove}
+          onDecline={singleDecline}
+          onResubmit={singleResubmit}
+        />
+      )}
 
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -255,9 +325,9 @@ export default function SubmissionsView() {
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Batch-process staff tree planting and incident submissions</p>
         </div>
         <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <span className="mono">{subs.filter(s => s.status === 'pending').length} pending</span>
+          <span className="mono">{pendingCount} pending</span>
           <span>·</span>
-          <span>{subs.filter(s => s.type === 'incident').length} incidents</span>
+          <span>{incidentCount} incidents</span>
         </div>
       </div>
 {/* Filters & Search */}
@@ -302,12 +372,36 @@ export default function SubmissionsView() {
           <option value="resubmit">Re-submit</option>
         </select>
 
-        <select className="select text-xs" style={{ width: 'auto' }}>
-          <option>All Events</option>
-          <option>Arbor Day Drive 2026</option>
-          <option>Earth Month Campaign</option>
-          <option>Campus Reforestation Q2</option>
+        <select
+          className="select text-xs"
+          style={{ width: 'auto' }}
+          value={eventFilter}
+          onChange={e => setEventFilter(e.target.value)}
+          aria-label="Filter by event"
+        >
+          <option value="all">All Events</option>
+          {eventNames.map(name => (
+            <option key={name} value={name}>{name}</option>
+          ))}
         </select>
+
+        {eventFilter !== 'all' && (
+          <button className="btn btn-sm" onClick={() => setEventFilter('all')}>Clear event filter</button>
+        )}
+
+        {(needle || filter !== 'all' || statusFilter !== 'all' || eventFilter !== 'all') && (
+          <button
+            className="btn btn-sm"
+            onClick={() => {
+              setSearch('')
+              setFilter('all')
+              setStatusFilter('all')
+              setEventFilter('all')
+            }}
+          >
+            Reset filters
+          </button>
+        )}
       </div>
 
       {/* Batch Action Bar */}
@@ -325,7 +419,7 @@ export default function SubmissionsView() {
             ✓ Approve Selected ({pendingSelected.length})
           </button>
           <button
-            onClick={() => pendingSelected.length > 0 && setShowDecline(true)}
+            onClick={() => pendingSelected.length > 0 && setDeclineTarget(pendingSelected)}
             disabled={pendingSelected.length === 0}
             className="btn btn-sm btn-danger"
           >
@@ -354,11 +448,14 @@ export default function SubmissionsView() {
                   className="w-4 h-4 rounded border cursor-pointer flex items-center justify-center"
                   style={{
                     borderColor: 'var(--border)',
-                    background: selected.size === filtered.length && filtered.length > 0 ? 'var(--accent)' : 'white',
+                    background: allFilteredSelected ? 'var(--accent)' : 'white',
                   }}
                   onClick={toggleAll}
+                  role="checkbox"
+                  aria-checked={allFilteredSelected}
+                  aria-label="Select all filtered submissions"
                 >
-                  {selected.size === filtered.length && filtered.length > 0 && (
+                  {allFilteredSelected && (
                     <svg viewBox="0 0 10 10" fill="none" className="w-2.5 h-2.5" stroke="white" strokeWidth="2">
                       <path d="M2 5l2.5 2.5L8 3" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -377,7 +474,7 @@ export default function SubmissionsView() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((sub) => {
+            {pageRows.map((sub) => {
               const isSelected = selected.has(sub.id)
               return (
                 <tr
@@ -388,12 +485,12 @@ export default function SubmissionsView() {
                     <div
                       className="w-4 h-4 rounded border cursor-pointer flex items-center justify-center"
                       style={{ borderColor: isSelected ? 'var(--accent)' : 'var(--border)', background: isSelected ? 'var(--accent)' : 'white' }}
-                      onClick={() => {
-                        const n = new Set(selected)
-                        if (n.has(sub.id)) n.delete(sub.id)
-                        else n.add(sub.id)
-                        setSelected(n)
-                      }}
+                      onClick={() => toggleOne(sub.id)}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-label={`Select ${sub.id}`}
+                      tabIndex={0}
+                      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleOne(sub.id) } }}
                     >
                       {isSelected && (
                         <svg viewBox="0 0 10 10" fill="none" className="w-2.5 h-2.5" stroke="white" strokeWidth="2">
@@ -436,7 +533,7 @@ export default function SubmissionsView() {
                   </td>
                   <td className="text-right">
                     <button
-                      onClick={() => setDrawerSub(sub)}
+                      onClick={() => setDrawerId(sub.id)}
                       className="btn btn-sm"
                     >
                       View
@@ -455,12 +552,26 @@ export default function SubmissionsView() {
         )}
 
         <div className="flex items-center justify-between px-4 py-3 border-t text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-          <span>Showing {filtered.length} of {subs.length} submissions</span>
+          <span>
+            Showing {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}
+            {'–'}
+            {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} submissions
+            {pageCount > 1 && <span className="ml-1">· page {safePage} of {pageCount}</span>}
+          </span>
           <div className="flex items-center gap-1">
-            <button className="btn btn-sm">← Prev</button>
-            <button className="btn btn-sm" style={{ borderColor: 'var(--accent)', color: 'var(--accent-dark)' }}>1</button>
-            <button className="btn btn-sm">2</button>
-            <button className="btn btn-sm">Next →</button>
+            <button className="btn btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1} aria-label="Previous page">← Prev</button>
+            {Array.from({ length: pageCount }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                className="btn btn-sm"
+                onClick={() => setPage(p)}
+                style={p === safePage ? { borderColor: 'var(--accent)', color: 'var(--accent-dark)' } : undefined}
+                aria-current={p === safePage ? 'page' : undefined}
+              >
+                {p}
+              </button>
+            ))}
+            <button className="btn btn-sm" onClick={() => setPage(p => Math.min(pageCount, p + 1))} disabled={safePage === pageCount} aria-label="Next page">Next →</button>
           </div>
         </div>
       </div>
