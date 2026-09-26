@@ -47,7 +47,8 @@ const monthlyTrend = [
   { month: 'Apr', verified: 1680, incidents: 12 },
 ]
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+/** @param {{ children: import('react').ReactNode }} props */
+function SectionLabel({ children }) {
   return (
     <div className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>{children}</div>
   )
@@ -77,8 +78,23 @@ export default function Analytics() {
    * endpoint exists yet. The honest, computable figure is "approved out of
    * submitted", so that is what this shows.
    */
-  const staffProgress = useMemo(() => {
-    const byStaff = new Map<string, { name: string; id: string; staffType: string; total: number; approved: number }>()
+  /**
+   * The accumulator held while counting. `rate` is deliberately absent -- it is
+   * only computed by the `.map()` once totals are final, and declaring it here
+   * would let a `row.rate` read compile before it exists.
+   * @typedef {object} StaffTally
+   * @property {string} name
+   * @property {string} id
+   * @property {string} staffType
+   * @property {number} total
+   * @property {number} approved
+   */
+
+  /** @typedef {StaffTally & { rate: number }} StaffProgressRow */
+
+  const staffProgress = useMemo(/** @returns {StaffProgressRow[]} */ () => {
+    /** @type {Map<string, StaffTally>} */
+    const byStaff = new Map()
     for (const s of relevant) {
       const row = byStaff.get(s.staffId) ?? { name: s.staffName, id: s.staffId, staffType: s.staffType, total: 0, approved: 0 }
       row.total += 1
@@ -239,7 +255,7 @@ export default function Analytics() {
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={speciesSurvival} layout="vertical" barSize={10}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-              <XAxis type="number" domain={[80, 100]} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
+              <XAxis type="number" domain={[80, 100]} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
               <YAxis type="category" dataKey="species" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={60} />
               <Tooltip contentStyle={tooltipStyle.contentStyle} itemStyle={tooltipStyle.itemStyle} labelStyle={tooltipStyle.labelStyle} formatter={(value) => [`${value}%`, 'Survival Rate']} />
               <Bar dataKey="rate" radius={[0, 2, 2, 0]}>

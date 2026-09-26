@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { stampDate, usePortal } from '../../lib/store'
 import { downloadCsv } from '../../lib/csv'
 
-// The log rows themselves live in the store (`lib/store.tsx`) so that approving
+// The log rows themselves live in the store (`lib/store.jsx`) so that approving
 // a submission or creating an event shows up here immediately, and so
 // "Load older entries" and the CSV export see exactly the same rows.
 
-const actionBadge: Record<string, string> = {
+/** @type {Record<string, string>} */
+const actionBadge = {
   BATCH_APPROVE: 'badge-accent',
   SINGLE_APPROVE: 'badge-accent',
   BATCH_DECLINE: 'badge-danger',
@@ -21,7 +22,8 @@ const actionBadge: Record<string, string> = {
   QUOTA_REASSIGN: 'badge-neutral',
   STAFF_EXEMPT: 'badge-neutral',
 }
-function actionLabel(action: string): string {
+/** @param {string} action @returns {string} */
+function actionLabel(action) {
   return action
     .split('_')
     .map(w => w.charAt(0) + w.slice(1).toLowerCase())
