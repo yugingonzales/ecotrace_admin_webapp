@@ -42,13 +42,28 @@ function loadAccounts() {
   } catch {
     /* corrupted storage - reseed below */
   }
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([DEMO_ACCOUNT]))
+  // The reseed write was outside the try, so a storage-denied browser threw
+  // here and took the whole login screen down. The demo account is returned
+  // regardless; persisting it is best-effort.
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([DEMO_ACCOUNT]))
+  } catch {
+    /* storage unavailable - the account still works for this session */
+  }
   return [DEMO_ACCOUNT]
 }
 
 /** @param {AdminAccount[]} accounts */
 function saveAccounts(accounts) {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
+  // Guarded for the same reason loadAccounts is: a full quota or a
+  // storage-denied browser (private mode, blocked third-party storage) throws
+  // on setItem. Without this, signing up crashed the component instead of
+  // degrading to an in-memory session the way the read path already does.
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
+  } catch {
+    /* account is still usable for this session; it just will not persist */
+  }
 }
 
 /** @param {LoginProps} props */

@@ -16,7 +16,7 @@
 --   Rationale: the admin/Flutter vocabulary is verified|pending|incident|unverified
 --   and the database vocabulary is pending|verified|deceased. Only two values
 --   overlap. Mapping the 4 `incident` trees to `deceased` would assert that four
---   trees are dead, which the source data does not say — trees.ts records a flat
+--   trees are dead, which the source data does not say — trees.js records a flat
 --   `incident` label with no cause. Adding the value preserves the distinction
 --   losslessly and gives the deferred dead-tree/EcoTag reconciliation loop a
 --   real state to transition out of. `deceased` is left in place for that loop.

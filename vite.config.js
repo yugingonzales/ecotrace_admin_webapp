@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
-import siteConfiguration from './.figma/make/site.json'
+// The import attribute is required, not decorative. Without it Node prints
+// "JSON import without import attributes" and, under Vite's native ESM config
+// loader, rejects the import outright. It is harmless under the current CJS
+// transpilation, which is exactly why it went unnoticed until now.
+import siteConfiguration from './.figma/make/site.json' with { type: 'json' }
 
 /** @typedef {import('vite').HtmlTagDescriptor} HtmlTagDescriptor */
 /** @typedef {import('vite').Plugin} Plugin */
@@ -29,16 +33,23 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        // `import.meta.dirname` rather than `__dirname`: this file is ESM, and
+        // `__dirname` only exists because Vite currently transpiles the config
+        // to CJS. Under `configLoader: 'native'` it is simply undefined.
+        '@': path.resolve(import.meta.dirname, './src'),
       },
     },
     // Dev/preview proxy for the Node.js REST API (see INTEGRATION_PROGRESS_LOG.md).
     // Proxying same-origin under `/api` keeps the browser out of CORS entirely
     // during development; production deployments should terminate this at the
     // reverse proxy (nginx/IIS) or set VITE_API_BASE_URL to an absolute origin.
+    // The dev/preview ports read VITE_PORT, never bare PORT. The API used to
+    // read PORT too, so exporting PORT=3000 for the API also pointed Vite at
+    // 3000 and — with strictPort — hard-failed the whole dev server. Each
+    // process now owns its own variable, so the collision cannot recur.
     server: {
       host: '0.0.0.0',
-      port: parseInt(process.env.PORT || '8443'),
+      port: parseInt(process.env.VITE_PORT || '8443'),
       strictPort: true,
       watch: { ignored: ['**/.figma/**'] },
       proxy: {
@@ -51,7 +62,7 @@ export default defineConfig(({ mode }) => {
     },
     preview: {
       host: '0.0.0.0',
-      port: parseInt(process.env.PORT || '8443'),
+      port: parseInt(process.env.VITE_PORT || '8443'),
       proxy: {
         '/api': {
           target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',

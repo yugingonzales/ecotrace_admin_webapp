@@ -13,7 +13,12 @@ import { ping, closePool } from './db.js'
 import { listPlants, getPlantById, getPlantByCode, getFacets } from './plants.js'
 
 const app = express()
-const PORT = Number(process.env.PORT ?? 3000)
+// API_PORT, not PORT. The Vite dev server used to read PORT as well, so
+// `PORT=3000 npm run dev` in the API shell made Vite try to bind 3000 too and
+// abort with strictPort. Each process now owns a variable. PORT is still
+// honoured as a fallback so an existing shell export does not silently change
+// which port the API binds.
+const PORT = Number(process.env.API_PORT ?? process.env.PORT ?? 3000)
 
 app.disable('x-powered-by')
 
@@ -41,7 +46,7 @@ const listQuery = z.object({
   maxLng: lonCoord.optional(),
   sort: SortEnum.default('code'),
   dir: DirEnum.default('asc'),
-  // Pagination is part of the Paginated<T> contract in types.ts, so it is
+  // Pagination is part of the Paginated<T> contract in types.js, so it is
   // validated here rather than clamped silently in the query layer.
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(500).default(50),
@@ -124,7 +129,7 @@ app.get('/api/plants/facets', async (_req, res, next) => {
   }
 })
 
-// Accepts either the numeric plant_id or the TRE-#### tag, because the apps
+// Accepts either the numeric tree_id or the TRE-#### tag, because the apps
 // identify trees by tag everywhere and only the database knows the surrogate key.
 app.get('/api/plants/:idOrCode', async (req, res, next) => {
   try {

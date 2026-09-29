@@ -278,7 +278,7 @@ h1, h2, h3, h4, h5 {
  * map root is `position: relative` with `z-index: auto`, which does NOT create
  * a stacking context — so every one of Leaflet's panes resolved in the ROOT
  * stacking context instead, and outranked app chrome. The header is `z-30`
- * (App.tsx), so the zoom buttons and the LayersControl switcher painted straight
+ * (App.jsx), so the zoom buttons and the LayersControl switcher painted straight
  * over the header and over the notification/avatar panels. The zoom controls
  * made it worse: index.css centres them with
  *   .cc-event-map .leaflet-top.leaflet-left { transform: translateY(-50%) }
@@ -295,14 +295,14 @@ h1, h2, h3, h4, h5 {
  * Leaflet raised its ceiling tomorrow, the header would still win.
  *
  * THREE map roots need this, not two:
- *   .map-card        Map page mini map        (MapView.tsx)
- *   .cc-event-map    Events page mini map     (EventBoundaryEditor.tsx compact)
- *   .cc-map-body     fullscreen boundary map  (EventBoundaryEditor.tsx modal)
+ *   .map-card        Map page mini map        (MapView.jsx)
+ *   .cc-event-map    Events page mini map     (EventBoundaryEditor.jsx compact)
+ *   .cc-map-body     fullscreen boundary map  (EventBoundaryEditor.jsx modal)
  *
  * `.cc-event-map` is the one that was missed the first time round, and it is
  * the worst of the three: it is the element the `transform: translateY(-50%)`
  * rule above targets, so its zoom controls sit at z-1000 in the root, and it
- * also hosts `.map-expand-btn` at z-500. `mapStacking.test.ts` fails if a
+ * also hosts `.map-expand-btn` at z-500. `mapStacking.test.js` fails if a
  * fourth map root appears without an isolation rule.
  */
 .map-card,

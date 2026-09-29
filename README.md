@@ -38,7 +38,7 @@ npm run dev
 ```
 
 Runs on **:8443**, not the Vite default of 5173 — the port is set explicitly in
-`vite.config.js`. Open <http://localhost:8443>.
+`vite.config.js` (override with `VITE_PORT`). Open <http://localhost:8443>.
 
 **Terminal 2 — the API (Node), only if you want live data:**
 
@@ -53,11 +53,19 @@ npm start           # listens on :3000
 Vite proxies `/api` → `http://localhost:3000` automatically, so the browser
 never makes a cross-origin request in development. No CORS setup needed.
 
-> **Port conflict:** `vite.config.js` and `server/src/index.js` both read a
-> `PORT` environment variable for *different* services, and Vite runs with
-> `strictPort: true`. If you export `PORT=3000` for the API, Vite will also try
-> to bind 3000 and fail to start. Leave `PORT` unset to get the intended
-> 8443 / 3000 pairing.
+Each server reads its **own** port variable, so they can no longer collide:
+
+| Variable | Read by | Default | Purpose |
+|---|---|---|---|
+| `VITE_PORT` | `vite.config.js` | `8443` | UI dev/preview server |
+| `API_PORT` | `server/src/index.js` | `3000` | REST API |
+| `DB_*` | `server/src/db.js` | XAMPP stock | MariaDB connection |
+
+> These used to share a single `PORT`. Because Vite runs with
+> `strictPort: true`, exporting `PORT=3000` for the API also pointed Vite at
+> 3000 and the dev server refused to start. That is fixed — but if you have an
+> old `PORT` export in your shell, the API still honours it as a fallback so
+> its behaviour does not silently change. Unset it to get the defaults above.
 
 ## Using the real API
 

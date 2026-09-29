@@ -9,7 +9,7 @@
  *
  * ## Target backend
  * A Node.js (v24) + Express 5 service talking to the MariaDB `ecotrace_db`
- * database. Types for every route payload live in `./types.ts` and were decoded
+ * database. Types for every route payload live in `./types.js` and were decoded
  * from the real InnoDB table definitions.
  *
  * ## Why this file exists
@@ -34,9 +34,9 @@
 /** @typedef {import('./types.js').EventProgressView} EventProgressView */
 /** @typedef {import('./types.js').OverviewStats} OverviewStats */
 /** @typedef {import('./types.js').Paginated<any>} Paginated */
-/** @typedef {import('./types.js').Plant} Plant */
-/** @typedef {import('./types.js').PlantInput} PlantInput */
-/** @typedef {import('./types.js').PlantStatus} PlantStatus */
+/** @typedef {import('./types.js').Tree} Tree */
+/** @typedef {import('./types.js').TreeInput} TreeInput */
+/** @typedef {import('./types.js').TreeStatus} TreeStatus */
 /** @typedef {import('./types.js').PlantVerification} PlantVerification */
 /** @typedef {import('./types.js').StudentPublic} StudentPublic */
 /** @typedef {import('./types.js').VerificationInput} VerificationInput */
@@ -143,8 +143,37 @@ export async function request(path, options = {}) {
   }
 
   const { method = 'GET', body, anonymous = false, signal } = options
+
+  // The timeout is a real AbortController rather than a boolean flag, because a
+  // fetch that has already received its headers can still stall while the body
+  // streams in. `timedOut` is what lets the two abort causes be told apart in
+  // the message: a caller that passed its own `signal` and cancelled mid-flight
+  // must not be told the request "timed out", or the debugger chases a timeout
+  // that never happened.
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, TIMEOUT_MS)
+
+  // `AbortSignal.any` composes both signals so neither can disable the other.
+  // The previous `signal ?? controller.signal` meant that passing a caller
+  // signal discarded the timeout entirely: the timer fired and aborted a
+  // controller that was never handed to fetch, so the request could hang
+  // forever. The manual fallback exists because `AbortSignal.any` is still
+  // missing in some older Safari builds; it forwards the caller's abort onto
+  // our controller so the same single signal reaches fetch either way.
+  let linked = controller.signal
+  if (signal) {
+    if (typeof AbortSignal.any === 'function') {
+      linked = AbortSignal.any([signal, controller.signal])
+    } else {
+      const onAbort = () => controller.abort()
+      if (signal.aborted) controller.abort()
+      else signal.addEventListener('abort', onAbort, { once: true })
+    }
+  }
 
   /** @type {Record<string, string>} */
   const headers = { Accept: 'application/json' }
@@ -156,30 +185,40 @@ export async function request(path, options = {}) {
 
   /** @type {Response} */
   let response
+  /** @type {unknown} */
+  let payload = null
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: signal ?? controller.signal,
+      signal: linked,
     })
+    // 204 and other empty bodies must not be passed to .json(). This read lives
+    // inside the try so a body that dies mid-stream becomes an ApiError like
+    // every other transport failure, instead of a bare TypeError escaping a
+    // function whose contract promises only ApiError.
+    const text = await response.text()
+    payload = text ? safeParse(text) : null
   } catch (cause) {
-    const aborted = cause instanceof DOMException && cause.name === 'AbortError'
+    // `cause.name` is checked rather than `instanceof DOMException`: an abort
+    // is not reliably a DOMException across runtimes, and a `name` check is
+    // what the DOM spec actually guarantees.
+    const aborted = cause instanceof Error && cause.name === 'AbortError'
     throw new ApiError(
       aborted
-        ? `Request to ${path} timed out after ${TIMEOUT_MS}ms.`
+        ? timedOut
+          ? `Request to ${path} timed out after ${TIMEOUT_MS}ms.`
+          : `Request to ${path} was cancelled by the caller.`
         : `Network request to ${path} failed — is the API running?`,
       0,
       cause
     )
   } finally {
+    // Deferred until after the body is consumed, so the timeout covers the
+    // whole exchange rather than stopping the moment headers land.
     clearTimeout(timer)
   }
-
-  // 204 and other empty bodies must not be passed to .json()
-  const text = await response.text()
-  /** @type {unknown} */
-  const payload = text ? safeParse(text) : null
 
   if (!response.ok) {
     const err = /** @type {{ error?: { message?: string } | string } | null} */ (payload)?.error
@@ -268,43 +307,43 @@ export function getOverviewStats() {
  * ignoring it would return every row and look like a filter that does nothing.
  *
  * @param {PlantQuery} [params]
- * @returns {Promise<import('./types.js').Paginated<Plant>>}
+ * @returns {Promise<import('./types.js').Paginated<Tree>>}
  */
 export function listPlants(params = {}) {
-  return /** @type {Promise<import('./types.js').Paginated<Plant>>} */ (
+  return /** @type {Promise<import('./types.js').Paginated<Tree>>} */ (
     request(`/plants${toQuery(params)}`)
   )
 }
 
 /**
  * `GET /api/plants/:id`
- * @param {number} plantId
- * @returns {Promise<Plant>}
+ * @param {number} treeId
+ * @returns {Promise<Tree>}
  */
-export function getPlant(plantId) {
-  return /** @type {Promise<Plant>} */ (request(`/plants/${plantId}`))
+export function getPlant(treeId) {
+  return /** @type {Promise<Tree>} */ (request(`/plants/${treeId}`))
 }
 
 /**
  * `POST /api/plants`
- * @param {PlantInput} input
- * @returns {Promise<Plant>}
+ * @param {TreeInput} input
+ * @returns {Promise<Tree>}
  */
 export function createPlant(input) {
-  return /** @type {Promise<Plant>} */ (
+  return /** @type {Promise<Tree>} */ (
     request('/plants', { method: 'POST', body: input })
   )
 }
 
 /**
  * `PATCH /api/plants/:id`
- * @param {number} plantId
- * @param {Partial<PlantInput>} input
- * @returns {Promise<Plant>}
+ * @param {number} treeId
+ * @param {Partial<TreeInput>} input
+ * @returns {Promise<Tree>}
  */
-export function updatePlant(plantId, input) {
-  return /** @type {Promise<Plant>} */ (
-    request(`/plants/${plantId}`, { method: 'PATCH', body: input })
+export function updatePlant(treeId, input) {
+  return /** @type {Promise<Tree>} */ (
+    request(`/plants/${treeId}`, { method: 'PATCH', body: input })
   )
 }
 
@@ -382,7 +421,7 @@ export function health() {
   )
 }
 
-// NOTE: these two are intentionally absent. `AuditLogs.tsx` and the incident
+// NOTE: these two are intentionally absent. `AuditLogs.jsx` and the incident
 // counters on the Overview have no backing table in `ecotrace_db` yet, so the
 // corresponding routes cannot be specified honestly. They are called out in
 // INTEGRATION_PROGRESS_LOG.md under "Schema gaps".

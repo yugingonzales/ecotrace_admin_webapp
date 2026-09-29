@@ -28,11 +28,12 @@ const speciesSurvival = [
   { species: 'Kamagong', planted: 180, verified: 155, rate: 86.1 },
 ]
 
+// Scoped to the three types the dashboard reports on. `Pest Infestation` and
+// `Tag Misplacement` were dropped on request; the donut and its legend both read
+// this array, so the two views stay in step automatically.
 const incidentTypes = [
   { name: 'Dead / Uprooted', value: 38, color: 'var(--danger)' },
   { name: 'Location Mismatch', value: 22, color: 'var(--warning)' },
-  { name: 'Pest Infestation', value: 18, color: '#8b5cf6' },
-  { name: 'Tag Misplacement', value: 14, color: 'var(--info)' },
   { name: 'Restricted Area', value: 8, color: '#ec4899' },
 ]
 

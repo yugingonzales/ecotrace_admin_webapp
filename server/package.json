@@ -9,7 +9,7 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "migrate": "node scripts/migrate.mjs",
-    "seed": "node ../server/scripts/generate-seed.mjs",
+    "seed": "node scripts/generate-seed.mjs",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

@@ -574,12 +574,27 @@ visual behaviour remain manual.
 | 2026-09-26 | Added notification-target + deep-link tests (14) | `src/lib/store.test.ts`, `src/lib/notificationTargets.test.tsx` |
 | 2026-09-26 | Un-ignored `.env.example` — the template had never been committed | `.gitignore` |
 | 2026-09-26 | TS→JS migration **complete**: all 28 `src/` files converted to JSDoc, TypeScript removed entirely (no `.ts`/`.tsx` in the repo), 3 hardcoded-extension readers made extension-agnostic | §11 |
+| 2026-09-27 | **npm/pnpm standardised** — pnpm pin removed, lockfile regenerated, Figma Make scripts converted | `package.json`, `.figma/make/*` |
+| 2026-09-27 | Added `README.md` (the repo had none) | `README.md` |
+| 2026-09-27 | Fixed 5 compounding defects in `request()`: external signal killed the timeout, timer cleared before the body, body errors escaped as `TypeError`, external abort mislabelled as timeout, fragile `instanceof DOMException` | `src/lib/api.js` |
+| 2026-09-27 | **Wrote the missing `scripts/migrate.mjs`** — `npm run migrate` pointed at a file that did not exist, breaking the documented first-run path | `server/scripts/migrate.mjs` |
+| 2026-09-27 | Renumbered the colliding seed migration `002`→`003`; it inserts `unverified`, which only exists after 002 | `server/migrations/` |
+| 2026-09-27 | Cleared 16 stale `.ts`/`.tsx` references, whitelisting 3 intentional extension-agnostic resolvers | 8 files |
+| 2026-09-27 | `import.meta.dirname` + `with { type: 'json' }` — both config deprecation warnings gone | `vite.config.js` |
+| 2026-09-27 | **Split the `PORT` collision** into `VITE_PORT` / `API_PORT` | `vite.config.js`, `server/src/index.js` |
+| 2026-09-27 | Guarded both `localStorage` writes in `Login.jsx` (one was outside its own `try`) | `src/components/Login.jsx` |
+| 2026-09-27 | Added `engines`; documented the port and `DB_*` variables | `package.json`, `.env.example`, `README.md` |
+| 2026-09-27 | Corrected the record: the server suite is **13 collected / 0 passed / 13 skipped**, not "13/13 passing" | §12.9 |
 
 
 **Verification:** `npx vite build` → success (859.49 kB / 248.00 kB gzipped;
 pre-existing chunk-size warning only). `npx vitest run` → 58/58.
-`server/ npm test` → 13/13. `npm run verify` runs the last two together.
-There is no longer a typecheck step — see §11.7.
+`server/ npm test` → 13 collected. `npm run verify` runs the last two
+together. There is no longer a typecheck step — see §11.7.
+
+> **Superseded by §12.9.** The `server/` figure above reads "13 collected" and
+> was previously reported as "13/13 passing". It is not: all 13 skip when the
+> API is down. Only the 58 frontend tests actually pass.
 
 **Tests were mutation-checked, not merely observed green.** Three deliberate
 breakages were introduced and reverted after confirming the suite caught each
@@ -697,10 +712,15 @@ which would have shipped a build whose entry could not resolve.
 ### 11.5 Verification of the final state
 
 - `npx vitest run` - **58/58** across 5 files
-- `server/ npm test` - **13/13**
+- `server/ npm test` - **13 collected / 0 passed / 13 skipped** (see note below)
 - `npx vite build` - **859.49 kB / 248.00 kB gz, CSS 42.35 kB**
 - Seed generator - **23 trees**, reproduces the committed SQL byte-for-byte
 - `Get-ChildItem -Recurse '*.ts','*.tsx'` outside `node_modules` - **none**
+
+> **Corrected.** This line originally read "13/13". It is not: the `server/`
+> suite is the live-API cross-check and every test self-skips when
+> `http://localhost:3000` is not answering. *Collected* was mistaken for
+> *passed*. The full correction is in §12.9.
 
 The build is 0.07 kB above the 859.42 kB pre-migration baseline. That delta
 is deliberate and was isolated: `main.jsx` used to assert `!` on
@@ -759,4 +779,262 @@ This was a deliberate trade, made after the alternative (keep `checkJs`) was
 put to the instructor's representative. It is the one place where the
 migration reduced a safety net, and it is recorded here so the trade can be
 reversed if the reading of "no TypeScript" turns out to mean source files only.
+
+---
+
+## 12. Full portal re-audit
+
+A second pass over the whole portal after the migration, looking for
+functional gaps, bugs and errors rather than for more features. This
+section is the checklist the pass was tracked against; each row moved from
+`OPEN` to `FIXED` only after the gate was re-run and passed.
+
+### 12.1 The method, and the mistake that shaped it
+
+During the pnpm removal earlier in this work, `Select-String -Include
+'*.md','*.json','*.toml','*.js'` reported a clean tree **twice** when it
+was not clean. `-Include` silently skips files whose extension it was not
+given — and all six `.figma/make/*` scripts are *extensionless*. Removing
+the pnpm pin at the same moment broke the Figma install/dev path with no
+visible signal at all.
+
+**Rule for this pass: every sweep uses `Get-ChildItem -Recurse -File
+-Force` with no extension filter.** The one legitimate use of an extension
+filter is reading a *known* set of specific files, never searching for
+"anything matching X".
+
+### 12.2 Checklist
+
+| # | Area | Finding | Status |
+|---|---|---|---|
+| 1 | `api.js` `request()` | 5 defects in the abort/body-read path (§12.3) | FIXED |
+| 2 | `server/package.json` | `npm run migrate` targets a missing `scripts/migrate.mjs` (§12.4) | FIXED |
+| 3 | `server/migrations/` | Two files share the `002` prefix | FIXED |
+| 4 | Stale `.ts`/`.tsx` refs | 16 live sites survived the migration (§12.5) | FIXED |
+| 5 | `vite.config.js` | `__dirname` + bare JSON import (§12.6) | FIXED |
+| 6 | `PORT` collision | UI and API read the same var (§12.7) | FIXED |
+| 7 | `Login.jsx` | Unprotected `saveAccounts` write (§12.8) | FIXED |
+| 8 | `.tsx`->`.jsx` forward-compat | 3 extension-agnostic readers verified intentional | VERIFIED (no change) |
+| 9 | Dead code / duplicate styling | `api.js` 12/15 unwired; 3 styling systems | DEFERRED by user |
+| 10 | `server/` auth gap | No auth; `Login.jsx` is prototype-grade | DEFERRED by user |
+| 11 | README clean-room run | Steps were read-verified, never executed | PARTIAL (§12.9) |
+
+### 12.3 `api.js` — five defects in one 60-line function
+
+`request()` had five bugs that compound: a caller-supplied `signal`
+disabled the timeout entirely, the timeout was cleared *before* the body
+was read, and body failures escaped as a raw `TypeError` rather than the
+`ApiError` the function documents.
+
+- **A — external signal disables the timeout.** `signal: signal ?? controller.signal`.
+  Pass a `signal` and `controller` is never wired to the fetch, so the
+  15s timer aborts nothing. Latent (no caller passes one today) but a
+  silent infinite hang for whoever adds cancellation first.
+- **B — the timer is cleared before the body arrives.** `clearTimeout` ran
+  in the `finally` of the `fetch` await, while `await response.text()`
+  sat *after* that block. A server that sends headers promptly then
+  trickles the body hangs forever, unguarded.
+- **C — body errors are the wrong type.** `response.text()` was outside
+  the `try`, so a mid-body network failure threw a `TypeError`, breaking
+  the `@throws {ApiError}` contract callers are told to rely on.
+- **D — the error message lies.** An external abort was reported as
+  `Request to /x timed out after 15000ms`, sending the debugger after a
+  timeout that never occurred. The two cases are now distinguished.
+- **E — `cause instanceof DOMException` is fragile.** Abort errors are not
+  reliably `DOMException` across runtimes; `cause.name === 'AbortError'`
+  is the robust check.
+
+The fix links the two signals (`AbortSignal.any`) and defers
+`clearTimeout` until after the body is consumed, so the timeout covers the
+entire exchange rather than just the headers.
+
+### 12.4 `npm run migrate` pointed at a file that does not exist
+
+`server/package.json` declared `"migrate": "node scripts/migrate.mjs"`.
+`server/scripts/` contains only `generate-seed.mjs`. `README.md:48`
+instructs a fresh clone to run it — so the **first** command a new
+developer is told to execute could only fail.
+
+Written `server/scripts/migrate.mjs`: applies every `migrations/*.sql` in
+filename order inside one transaction per file, recording each in a
+`schema_migrations` table so re-running is idempotent. It validates that
+the database is reachable and reports what it applied.
+
+This is what surfaced finding 3: the runner is only correct if filenames
+sort into a real order, and two files both began `002`.
+
+### 12.5 Stale `.ts`/`.tsx` references — and the ones that must stay
+
+Sixteen live sites still named TypeScript files that no longer exist,
+left behind by the migration — and one more (`api.js:47`, referring to the
+deleted `vite-env.d.ts`) is a true historical statement, so it stays.
+Fixed surgically; the count is 16 rather than the 14 first listed, because
+a recount during the fix turned up two more.
+
+**Three sites were deliberately left alone**, because they list
+extensions *on purpose* and a blind find-and-replace would have broken
+the very tests that catch renames:
+
+- `src/lib/mapStacking.test.js:36` — `['.js', '.jsx', '.ts', '.tsx']` is a
+  resolver that must keep working if a file is ever converted back.
+- `server/scripts/generate-seed.mjs:25` and
+  `server/test/api.test.js:28` — same pattern, resolving `trees.js`.
+
+Keeping the `.ts` arms in those three is not an oversight; it is the
+behaviour §11.4 built on purpose.
+
+### 12.6 Forward-compat warnings in `vite.config.js`
+
+Two warnings on every build: `__dirname` in an ESM config, and a JSON
+import without import attributes. Both are harmless today because Vite
+transpiles the config to CJS, and both break when `configLoader: 'native'`
+becomes the default. Switched to `import.meta.dirname` and
+`with { type: 'json' }`; the warning is gone from a real build.
+
+### 12.7 The `PORT` collision
+
+`vite.config.js` read `process.env.PORT || 8443` with `strictPort: true`;
+`server/src/index.js` read `process.env.PORT ?? 3000`. Exporting
+`PORT=3000` for the API therefore made **Vite** also try 3000 and
+hard-fail. Two processes, one variable name.
+
+Resolved by giving each process its own variable — `VITE_PORT` for the UI
+(default 8443), `API_PORT` for the API (default 3000). The collision is
+now structurally impossible rather than documented. `PORT` is still
+honoured by the API as a fallback so an existing shell export does not
+silently change which port it binds.
+
+### 12.8 `Login.jsx` — an unprotected write
+
+`loadAccounts` guards its `localStorage` *read* with `try/catch`; `saveAccounts`
+did not guard its write. In private mode or on quota exhaustion, signing up
+would throw an uncaught error instead of degrading the way the read path
+already does. Guarded for consistency.
+
+Reading it closely turned up a second instance of the same bug that the
+original finding missed: `loadAccounts` guards the `getItem`, but its
+**reseed `setItem` sat outside the `try`**. So a storage-denied browser
+threw there and took the whole login screen down on first load — a strictly
+worse failure than the signup one, because it fires before the user does
+anything. Both writes are guarded now.
+
+The deeper issue — plaintext passwords in `localStorage` — is the
+prototype-grade auth the user deferred; it is unchanged and still recorded
+as open in §6.
+
+### 12.9 What was verified, and what was not
+
+Executed after the fixes:
+
+- `npm run verify` — **58/58 vitest**, `vite build` clean
+- `npm run build` — both config deprecation warnings **confirmed gone**
+  (asserted with a `-match` on captured output, not by eyeballing the tail)
+- **Dev server started for real** with `VITE_PORT=8451` and answered
+  **HTTP 200, 1107 bytes** on that port — proving the rename, and that the
+  config still loads, in one shot
+- **The collision is now provably fixed**: resolving the config with
+  `PORT=3000` exported (the exact old failure case) yields
+  `server.port = 8443`, where before it yielded 3000
+- `npm run seed` — regenerates `003_seed_plants.sql`, 23 rows
+- `npm run migrate` — prefix guard passes, then fails cleanly at connect
+  with an actionable message; the guard was separately **proven to fire**
+  by temporarily adding a second `002_*` file
+
+**A correction to an earlier claim.** §11.5 and the session summary both
+reported the server suite as "13/13 passing". Re-running it shows:
+
+```
+# tests 13
+# pass 0
+# skipped 13
+```
+
+**All 13 skip.** They are the live-API cross-check and they self-skip when
+`http://localhost:3000` is not answering — which it was not, because
+MariaDB is not running on this host. Reporting "13/13" conflated *collected*
+with *passed*. The correct statement is **13 collected, 0 passed, 13
+skipped**, and they only pass with the API up and `ecotrace_db` seeded.
+The 58 frontend tests are genuinely passing and are the only real
+automated guard in the repo.
+
+**Still not verified:** `npm run migrate` was never executed against a live
+MariaDB (none reachable here), so the SQL itself is unproven — only the
+runner's ordering, guards, and statement splitting are. And the README's
+clean-room `npm install` on a fresh clone was not run.
+
+---
+
+## 13. §13 — Live database build: tree_* rename + events + tree details
+
+The migrate runner's dead section ends here: XAMPP's MariaDB 10.4.32 was
+started for real and `npm run migrate` ran against live `ecotrace_db`.
+
+### 13.1 What was done
+
+1. **Started the real database.** `C:\xampp\mysql\data\ecotrace_db` holds all
+   7 tables, 3 views and 2 triggers. Row counts were verified first (23 trees,
+   1 event, 0 tasks, `AUTO_INCREMENT=71`).
+2. **Backfill of `schema_migrations`.** Migrations 001–003 are applied in this
+   schema (columns and ENUM values exist, 23 rows seeded) but were never
+   recorded — the file had been hand-imported. The three filenames were
+   inserted as already-applied so the runner could start at 004.
+3. **`004_trees_rename_plant_columns.sql` — the rename.** Four attributes on
+   `ecotrace_plants` moved to the requested `tree_*` vocabulary
+   (`plant_id → tree_id`, `plant_species → tree_name`,
+   `planted_date → tree_planted_date`, `plant_status → tree_status`) and the
+   FK columns in `ecotrace_event_tasks`, `ecotrace_plant_verifications` and
+   `ecotrace_plant_reservations` were renamed `plant_id → tree_id` so the
+   identifier is coherent everywhere. Two NEW attributes were added:
+   `tree_planter_name` (the real planter column — see the seed's parked-name
+   hack, which was the one documented line not to ship) and `tree_description`
+   (nullable). `vw_active_plants` and `vw_student_progress` were dropped and
+   recreated; the three FKs were dropped and recreated identically. Note for
+   10.4: `RENAME COLUMN` does not exist on this version, so the migration uses
+   `CHANGE COLUMN` with types restated verbatim from `SHOW CREATE TABLE`.
+4. **`005_seed_events.sql` — two more events.** `Arbor Day 2025` (completed)
+   and `UEP Catarman Green Drives 2026` (active). Idempotent via
+   `INSERT … SELECT … WHERE NOT EXISTS` because `ecotrace_events` has no
+   natural unique key. Total is now 3.
+5. **`006_seed_tree_details.sql` — data backfill.** Moved the seeded planter
+   names out of `location_address` into `tree_planter_name` and cleared the
+   fake addresses (guarded: a digit/comma-free value only), then wrote a
+   per-tree `tree_description` for all 23 trees, keyed on `UNIQUE tree_code`.
+6. **Consumer code was renamed with the columns**: `server/src/plants.js`
+   (SELECT/SORTABLE/facets), `src/lib/types.js` (`Tree`/`TreeInput`/
+   `TreeStatus`, and `plant_id → tree_id` on EventTask, PlantVerification,
+   VerificationInput, PlantReservation, ActivePlantView), `src/lib/api.js`,
+   `src/lib/usePlants.js` (`staffName` now reads `tree_planter_name`),
+   `server/test/api.test.js`. `generate-seed.mjs` was **not** changed to the
+   new names on purpose: it regenerates 003, which must apply before 004 on a
+   fresh DB — see the warning block added to that file.
+
+### 13.2 Verification (all automated, all live)
+
+- `npm run migrate` — `exit=0`; 004 (18 statements), 005 (2), 006 (2) applied.
+  A second run prints "nothing to do" — idempotency proven, not assumed.
+- `SHOW CREATE TABLE ecotrace_plants` — `tree_id` PK, `idx_tree_status`,
+  `idx_tree_planted_date`, `chk_latitude`/`chk_longitude` intact, and the only
+  remaining `plant%` column in the database is `plant_stage` (a growth-stage
+  ENUM on `ecotrace_plant_verifications`, deliberately out of scope).
+- Views: `vw_active_plants` returns 11, `vw_student_progress` resolves.
+- Wire: `GET /api/plants/1` returns exactly the requested fields — `tree_id`,
+  `tree_code`, `tree_name`, `tree_planted_date`, `latitude`, `longitude`
+  (separate), `tree_planter_name`, `tree_description`, `tree_status`.
+- `server/ npm test` — **13/13 pass against the live API** (this was 0/13)
+  and the whole `npm run verify` gate is **58/58 + clean build, 859.41 kB**.
+- One bug surfaced and fixed by the live suite: `getPlantById` still filtered
+  `WHERE plant_id = ?` after the rename.
+
+### 13.3 Notes and boundaries
+
+- Table **names** were not renamed (`ecotrace_plants`, ...) — only the
+  requested attribute names. `plant_stage` and the
+  `ecotrace_plant_verifications`/`ecotrace_plant_reservations` table names
+  remain for the same reason.
+- A full pre-rename dump is at `server/ecotrace_db_backup_pre_rename.sql` and
+  is git-ignored (`server/*_backup*.sql`); it contains real credential hashes
+  and must not be committed.
+- `INTEGRATION_PROGRESS_LOG.md §3.1` still lists the pre-rename PKs; this §13
+  is the correction. The schema inventory should be re-verified wholesale
+  before anything else builds on it.
 

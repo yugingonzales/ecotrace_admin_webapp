@@ -16,3 +16,7 @@ logs/
 *.err
 .claude-replay.*
 .tmp-*
+# Database backups/dumps taken before destructive migrations. These contain
+# real user data (password hashes, emails) and must never be committed;
+# only migrations/*.sql are the tracked schema.
+server/*_backup*.sql

@@ -1,5 +1,5 @@
 /**
- * Regenerate `server/migrations/002_seed_plants.sql` from `src/lib/trees.js`.
+ * Regenerate `server/migrations/003_seed_plants.sql` from `src/lib/trees.js`.
  *
  * Run:  node server/scripts/generate-seed.mjs
  */
@@ -11,7 +11,11 @@ const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(here, '..', '..')
 const treesPath = resolveTreesSource(repoRoot)
 const treesFileName = basename(treesPath)
-const outPath = resolve(repoRoot, 'server', 'migrations', '002_seed_plants.sql')
+// 003, not 002: the seed inserts plant_status 'unverified', a value that only
+// exists once migration 002 has widened the ENUM. It is also keyed on the UNIQUE
+// tree_code column that migration 001 adds, so it must sort after both. The
+// numbering is what the migration runner sorts on, so this is not cosmetic.
+const outPath = resolve(repoRoot, 'server', 'migrations', '003_seed_plants.sql')
 
 /**
  * Locate `src/lib/trees.*`.
@@ -40,6 +44,16 @@ const STATUS_MAP = {
   unverified: 'unverified',
 }
 const VERIFIED_COUNTS = { verified: 1, pending: 0, incident: 0, unverified: 0 }
+
+// IMPORTANT - DO NOT modernise the column names in this file.
+// Migration 004 renamed the plants table's attributes to tree_* (tree_id,
+// tree_name, ...) but this seed intentionally keeps emitting the pre-rename
+// plant_* names: it is migration 003 and must apply BEFORE 004 on a fresh
+// database, where the old columns still exist. If the INSERT list here used
+// tree_name/tree_status, every fresh install would fail at 003. The rename
+// migration moves and renames nothing that 003 writes that was not already
+// covered, and migration 006 backfills the new tree_planter_name /
+// tree_description columns afterwards.
 
 function fail(message) { console.error(`generate-seed: ${message}`); process.exit(1) }
 

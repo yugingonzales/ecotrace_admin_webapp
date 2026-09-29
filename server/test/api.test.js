@@ -77,10 +77,10 @@ test('every tree matches on every field the UIs read', { skip: !reachable }, asy
     assert.equal(row.latitude, t.lat, `${t.treeCode} lat`)
     assert.equal(row.longitude, t.lng, `${t.treeCode} lng`)
     assert.equal(row.zone_name, t.zone, `${t.treeCode} zone`)
-    assert.equal(row.plant_species, t.species, `${t.treeCode} species`)
+    assert.equal(row.tree_name, t.species, `${t.treeCode} species`)
     // The exact string, not a Date - this is the timezone regression guard.
-    assert.equal(row.planted_date, t.plantedIso, `${t.treeCode} plantedIso (timezone drift?)`)
-    assert.equal(row.plant_status, STATUS_MAP[t.status], `${t.treeCode} status mapping`)
+    assert.equal(row.tree_planted_date, t.plantedIso, `${t.treeCode} plantedIso (timezone drift?)`)
+    assert.equal(row.tree_status, STATUS_MAP[t.status], `${t.treeCode} status mapping`)
   }
 })
 
@@ -91,7 +91,7 @@ test('status filter is a true partition: sums back to 23', { skip: !reachable },
   for (const status of ['pending', 'verified', 'incident', 'deceased', 'unverified']) {
     const { body } = await get(`/api/plants?status=${status}`)
     for (const p of body.items) {
-      assert.equal(p.plant_status, status)
+      assert.equal(p.tree_status, status)
       assert.ok(!seen.has(p.tree_code), `${p.tree_code} returned by two status filters`)
       seen.add(p.tree_code)
     }
@@ -137,10 +137,10 @@ test('unknown plant and unknown route both 404', { skip: !reachable }, async () 
 test('lookup works by numeric id and by tag', { skip: !reachable }, async () => {
   const { body: all } = await get('/api/plants')
   const first = all.items[0]
-  const byId = await get(`/api/plants/${first.plant_id}`)
+  const byId = await get(`/api/plants/${first.tree_id}`)
   const byCode = await get(`/api/plants/${first.tree_code}`)
   assert.equal(byId.body.tree_code, first.tree_code)
-  assert.equal(byCode.body.plant_id, first.plant_id)
+  assert.equal(byCode.body.tree_id, first.tree_id)
 })
 
 test('the four fixture statuses stay distinct (no status collapse)', { skip: !reachable }, async () => {

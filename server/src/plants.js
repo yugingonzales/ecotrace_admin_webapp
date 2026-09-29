@@ -5,34 +5,41 @@
  * SQL, including the dynamic ORDER BY, which is validated against a whitelist
  * before it reaches the statement text.
  */
+
+// Taxonomy note: the table is still named ecotrace_plants but its attributes
+// were renamed to the tree_* vocabulary by migration 004 (tree_id, tree_name,
+// tree_planted_date, tree_status). These queries speak that vocabulary.
 import { pool } from './db.js'
 
 /**
- * SELECT list -> the `Plant` interface in src/lib/types.ts.
+ * SELECT list -> the `Tree` interface in src/lib/types.js.
  *
- * Column names are the raw InnoDB names on purpose. types.ts already declares
- * `Plant` against the real schema, so renaming to camelCase here would force
- * every consumer to translate twice - once from the wire, once from `Plant` to
+ * Column names are the raw InnoDB names on purpose. types.js already declares
+ * `Tree` against the real schema, so renaming to camelCase here would force
+ * every consumer to translate twice - once from the wire, once from `Tree` to
  * the `TreeMarker` shape MapView renders. One boundary, in the UI.
  *
- * `tree_code` and `zone_name` are the two columns added by migration 001; the
- * interface was extended to match.
+ * `tree_code` and `zone_name` are the columns added by migration 001; the
+ * interface was extended to match. `tree_planter_name` and `tree_description`
+ * arrived with migration 004.
  */
 const SELECT = `
-  SELECT plant_id,
+  SELECT tree_id,
          tree_code,
          zone_name,
          latitude,
          longitude,
          location_address,
+         tree_planter_name,
+         tree_description,
          -- DATE_FORMAT is required, not cosmetic. mysql2 decodes a DATE into a JS
          -- Date at LOCAL midnight and JSON.stringify then renders it as UTC, which on
          -- a UTC+8 host shifts every planted date back a day (2026-03-12 becomes
-         -- 2026-03-11T16:00:00.000Z). types.ts declares planted_date as a plain
+         -- 2026-03-11T16:00:00.000Z). types.js declares tree_planted_date as a plain
          -- 'YYYY-MM-DD' string, so emit exactly that and skip the round-trip.
-         DATE_FORMAT(planted_date, '%Y-%m-%d') AS planted_date,
-         plant_species,
-         plant_status,
+         DATE_FORMAT(tree_planted_date, '%Y-%m-%d') AS tree_planted_date,
+         tree_name,
+         tree_status,
          verification_count,
          last_verified_at,
          created_by,
@@ -42,16 +49,16 @@ const SELECT = `
 
 /** Whitelist for ORDER BY. Never interpolate raw user input. */
 const SORTABLE = {
-  id: 'plant_id',
+  id: 'tree_id',
   code: 'tree_code',
   zone: 'zone_name',
-  date: 'planted_date',
-  status: 'plant_status',
+  date: 'tree_planted_date',
+  status: 'tree_status',
 }
 
 /**
  * @param {object} filters
- * @param {string[]} filters.statuses  plant_status values
+ * @param {string[]} filters.statuses  tree_status values
  * @param {string[]} filters.zones     zone_name values
  * @param {{minLat,maxLat,minLng,maxLng}} [filters.bounds]
  * @param {string} [filters.sort]      key of SORTABLE
@@ -62,7 +69,7 @@ export async function listPlants({ statuses, zones, bounds, sort = 'code', dir =
   const params = []
 
   if (statuses?.length) {
-    where.push(`plant_status IN (${statuses.map(() => '?').join(',')})`)
+    where.push(`tree_status IN (${statuses.map(() => '?').join(',')})`)
     params.push(...statuses)
   }
   if (zones?.length) {
@@ -93,12 +100,12 @@ export async function listPlants({ statuses, zones, bounds, sort = 'code', dir =
     [...params, pageSize, offset],
   )
 
-  // The `Paginated<T>` envelope declared in src/lib/types.ts.
+  // The `Paginated<T>` envelope declared in src/lib/types.js.
   return { items: rows, total, page, pageSize }
 }
 
 export async function getPlantById(id) {
-  const [rows] = await pool.query(`${SELECT} WHERE plant_id = ? LIMIT 1`, [id])
+  const [rows] = await pool.query(`${SELECT} WHERE tree_id = ? LIMIT 1`, [id])
   return rows[0] ?? null
 }
 
@@ -110,7 +117,7 @@ export async function getPlantByCode(code) {
 /** Distinct values, for populating the admin's filter dropdowns from real data. */
 export async function getFacets() {
   const [statuses] = await pool.query(
-    'SELECT DISTINCT plant_status AS value, COUNT(*) AS count FROM ecotrace_plants GROUP BY plant_status ORDER BY plant_status',
+    'SELECT DISTINCT tree_status AS value, COUNT(*) AS count FROM ecotrace_plants GROUP BY tree_status ORDER BY tree_status',
   )
   const [zones] = await pool.query(
     'SELECT DISTINCT zone_name AS value, COUNT(*) AS count FROM ecotrace_plants WHERE zone_name IS NOT NULL GROUP BY zone_name ORDER BY zone_name',

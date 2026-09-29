@@ -19,7 +19,7 @@
 // ── ENUM unions ─────────────────────────────────────────────────────────────
 
 /**
- * `ecotrace_plants.plant_status`
+ * `ecotrace_plants.tree_status`
  *
  * This is the WORKFLOW axis (has this tree been checked, and what happened?),
  * not a health assessment — see `HealthStatus` below. The two are orthogonal and
@@ -30,7 +30,9 @@
  * the admin's four fixture statuses exactly. Collapsing either onto a neighbouring
  * value is lossy in a visible way — MapView colours and counts each status
  * separately, so a merge would silently redraw pins under the wrong legend entry.
- * @typedef {'pending' | 'verified' | 'deceased' | 'incident' | 'unverified'} PlantStatus
+ *
+ * The column was renamed plant_status -> tree_status by migration 004.
+ * @typedef {'pending' | 'verified' | 'deceased' | 'incident' | 'unverified'} TreeStatus
  */
 
 /**
@@ -87,11 +89,13 @@
  */
 
 /**
- * `ecotrace_plants` — PK `plant_id`.
+ * `ecotrace_plants` — PK `tree_id`.
  * CHECK `chk_latitude` (-90..90), `chk_longitude` (-180..180).
- * Indexed by `idx_coordinates` (latitude, longitude), status and planted_date.
- * @typedef {object} Plant
- * @property {number} plant_id
+ * Indexed by `idx_coordinates` (latitude, longitude), tree_status and
+ * tree_planted_date. The attribute names were renamed from plant_* to tree_*
+ * by migration 004 (this typedef was renamed with them).
+ * @typedef {object} Tree
+ * @property {number} tree_id
  * @property {string | null} tree_code Display tag, e.g. `'TRE-0892'`. Added by
  *   migration 001 — this is the identifier both UIs key on, and it was previously
  *   unrepresentable. Nullable: rows created before the migration have no tag, and
@@ -101,9 +105,14 @@
  * @property {number} latitude
  * @property {number} longitude
  * @property {string | null} location_address
- * @property {string} planted_date `DATE` as `YYYY-MM-DD`.
- * @property {string} plant_species
- * @property {PlantStatus} plant_status
+ * @property {string | null} tree_planter_name Name of the person who planted the
+ *   tree. Added by migration 004; migration 006 moved the dev seed's names out of
+ *   location_address and into this column.
+ * @property {string | null} tree_description Free-form description of the tree,
+ *   if any. Added by migration 004.
+ * @property {string} tree_planted_date `DATE` as `YYYY-MM-DD`.
+ * @property {string} tree_name Species common name, e.g. `'Narra'`.
+ * @property {TreeStatus} tree_status
  * @property {number} verification_count
  * @property {string | null} last_verified_at
  * @property {number | null} created_by FK-shaped reference to
@@ -114,12 +123,12 @@
 
 /**
  * Payload for `POST /api/plants`.
- * @typedef {object} PlantInput
+ * @typedef {object} TreeInput
  * @property {number} latitude
  * @property {number} longitude
  * @property {string | null} [location_address]
- * @property {string} planted_date
- * @property {string} plant_species
+ * @property {string} tree_planted_date
+ * @property {string} tree_name
  * @property {number | null} [created_by]
  */
 
@@ -155,12 +164,13 @@
 
 
 /**
- * `ecotrace_event_tasks` — composite key `(event_id, plant_id, student_id)`
- * (`zf0`), plus the `task_id` primary key. UNIQUE `unique_event_plant_student`.
+ * `ecotrace_event_tasks` — composite key `(event_id, tree_id, student_id)`
+ * (`zf0`), plus the `task_id` primary key. UNIQUE `unique_event_tree_student`
+ * (renamed from `unique_event_plant_student` by migration 004).
  * @typedef {object} EventTask
  * @property {number} task_id
  * @property {number} event_id
- * @property {number} plant_id
+ * @property {number} tree_id
  * @property {number} student_id
  * @property {TaskStatus} task_status
  * @property {string} assigned_at
@@ -178,7 +188,8 @@
  * CHECK `chk_height_positive`, `chk_circumference_positive`, `chk_canopy_positive`.
  * @typedef {object} PlantVerification
  * @property {number} verification_id
- * @property {number} plant_id
+ * @property {number} tree_id  FK to `ecotrace_plants.tree_id`; renamed from
+ *   plant_id by migration 004.
  * @property {number} student_id
  * @property {number | null} event_id
  * @property {HealthStatus} health_status
@@ -201,7 +212,7 @@
 /**
  * Payload for `POST /api/verifications`.
  * @typedef {object} VerificationInput
- * @property {number} plant_id
+ * @property {number} tree_id
  * @property {number} student_id
  * @property {number | null} [event_id]
  * @property {HealthStatus} health_status
@@ -225,12 +236,12 @@
 /**
  * `vw_active_plants`
  * @typedef {object} ActivePlantView
- * @property {number} plant_id
- * @property {string} plant_species
+ * @property {number} tree_id
+ * @property {string} tree_name
  * @property {number} latitude
  * @property {number} longitude
- * @property {PlantStatus} plant_status
- * @property {string} planted_date
+ * @property {TreeStatus} tree_status
+ * @property {string} tree_planted_date
  * @property {string | null} last_verified_at
  */
 
@@ -306,7 +317,7 @@
  * `ecotrace_plant_reservations` — PK `reservation_id`.
  * @typedef {object} PlantReservation
  * @property {number} reservation_id
- * @property {number} plant_id
+ * @property {number} tree_id
  * @property {number} student_id
  * @property {number | null} event_id
  * @property {string} reserved_at

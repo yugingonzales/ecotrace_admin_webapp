@@ -20,8 +20,8 @@ import { API_ENABLED, listPlants } from './api'
 
 /** @typedef {import('./trees.js').TreeMarker} TreeMarker */
 /** @typedef {import('./trees.js').StatusKey} StatusKey */
-/** @typedef {import('./types.js').Paginated<import('./types.js').Plant>} Paginated */
-/** @typedef {import('./types.js').Plant} Plant */
+/** @typedef {import('./types.js').Paginated<import('./types.js').Tree>} Paginated */
+/** @typedef {import('./types.js').Tree} Tree */
 
 /** Never trust a server list to be bounded — this is what a broken API costs. */
 const MAX_MARKERS = 5000
@@ -41,7 +41,7 @@ function formatForDisplay(iso) {
   return `${month} ${Number(d)}, ${y}`
 }
 /**
- * Translate a `Plant` row into the `TreeMarker` shape MapView renders.
+ * Translate a `Tree` row into the `TreeMarker` shape MapView renders.
  *
  * This is the single boundary between the database vocabulary and the admin's
  * own. The two overlap only partially (see INTEGRATION_PROGRESS_LOG.md), so the
@@ -50,7 +50,7 @@ function formatForDisplay(iso) {
  * Returns null for rows the map cannot honestly draw, so one bad row degrades to
  * a missing pin rather than a pin at 0,0 off the coast of Africa.
  *
- * @param {Plant} p
+ * @param {Tree} p
  * @returns {TreeMarker | null}
  */
 export function plantToMarker(p) {
@@ -60,10 +60,10 @@ export function plantToMarker(p) {
   if (!p.tree_code) return null
   if (typeof p.latitude !== 'number' || typeof p.longitude !== 'number') return null
 
-  // plant_status is the workflow axis. 'deceased' exists in the database for the
-  // deferred dead-tree loop but has no marker in trees.ts, so it is filtered out
+  // tree_status is the workflow axis. 'deceased' exists in the database for the
+  // deferred dead-tree loop but has no marker in trees.js, so it is filtered out
   // upstream by the query rather than mapped to a misleading pin colour here.
-  const status = /** @type {StatusKey} */ (p.plant_status)
+  const status = /** @type {StatusKey} */ (p.tree_status)
   if (status !== 'verified' && status !== 'pending' && status !== 'incident' && status !== 'unverified') {
     return null
   }
@@ -74,13 +74,13 @@ export function plantToMarker(p) {
     lat: p.latitude,
     lng: p.longitude,
     status,
-    // The seed parks the planter name in location_address because the table has
-    // no planter column. That is a dev-seed hack (see the seed header); until a
-    // real column exists this is the best available.
-    staffName: p.location_address ?? 'Unassigned',
-    species: p.plant_species,
-    datePlanted: formatForDisplay(p.planted_date),
-    plantedIso: p.planted_date,
+    // Migration 004 added a real tree_planter_name column and migration 006
+    // moved the dev seed's names out of location_address into it. Rows that
+    // predate the column (or were entered with an address) fall back.
+    staffName: p.tree_planter_name ?? 'Unassigned',
+    species: p.tree_name,
+    datePlanted: formatForDisplay(p.tree_planted_date),
+    plantedIso: p.tree_planted_date,
     zone: /** @type {TreeMarker['zone']} */ (p.zone_name ?? 'Zone I'),
   }
 }

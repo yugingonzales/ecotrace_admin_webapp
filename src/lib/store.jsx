@@ -199,7 +199,7 @@ export const LEGACY_NOTIFICATION_TARGET = /** @type {NotificationTarget} */ ({ m
 // fall back to its own array and silently disagree with what is persisted.
 
 /** Coordinates are UEP Catarman, Northern Samar (12.50xx N / 124.66xx E) and are
- *  derived from the matching treeTag entries in `lib/trees.ts` so that every
+ *  derived from the matching treeTag entries in `lib/trees.js` so that every
  *  submission resolves to the same point the map layer renders. */
 /** @type {Submission[]} */
 const SEED_SUBMISSIONS = [
