@@ -3,17 +3,21 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Read-only REST API over the real MariaDB ecotrace_db schema.",
+  "description": "Authentication REST API for the EcoTrace MariaDB database.",
   "engines": { "node": ">=20" },
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "migrate": "node scripts/migrate.mjs",
-    "seed": "node scripts/generate-seed.mjs",
+    "rebuild": "node scripts/rebuild.mjs",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.5",
     "zod": "^3.24.1"
   }

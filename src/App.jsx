@@ -16,6 +16,7 @@ import {
 import { useEscapeToClose } from './lib/useEscapeToClose'
 import { useOutsideClick } from './lib/useOutsideClick'
 import { downloadCsv } from './lib/csv'
+import { getProfile, readToken, writeToken } from './lib/api'
 
 /** @typedef {import('react').ReactNode} ReactNode */
 /** @typedef {import('./components/Login.jsx').SessionUser} SessionUser */
@@ -23,17 +24,6 @@ import { downloadCsv } from './lib/csv'
 /** @typedef {import('./lib/store.js').NotificationTarget} NotificationTarget */
 
 const SIDEBAR_WIDTH = 220
-const SESSION_KEY = 'ecotrace_session'
-
-/** @returns {SessionUser | null} */
-function readSession() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY)
-    return raw ? /** @type {SessionUser} */ (JSON.parse(raw)) : null
-  } catch {
-    return null
-  }
-}
 
 /** @param {string} name @returns {string} */
 function getInitials(name) {
@@ -98,8 +88,34 @@ export default function App() {
   const { active, visited, navigate, notifications, unreadCount, pendingCount, submissions, attention, storeActions } = usePortal()
   const [notifOpen, setNotifOpen] = useState(false)
   // Lazy initialiser: the argument is the thunk `readSession`, not a SessionUser.
-  const [user, setUser] = useState(readSession)
+  const [user, setUser] = useState(/** @type {SessionUser | null} */ (null))
+  const [authChecking, setAuthChecking] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
+  const authRequestId = useRef(0)
+
+  useEffect(() => {
+    const requestId = ++authRequestId.current
+    const token = readToken()
+    if (!token) {
+      setAuthChecking(false)
+      return
+    }
+    getProfile()
+      .then(({ user: profile }) => {
+        if (requestId !== authRequestId.current) return
+        if (profile?.role_name !== 'admin' && profile?.role !== 'admin') {
+          writeToken(null)
+          return
+        }
+        setUser({ name: profile.name, email: profile.email })
+      })
+      .catch(() => {
+        if (requestId === authRequestId.current) writeToken(null)
+      })
+      .finally(() => {
+        if (requestId === authRequestId.current) setAuthChecking(false)
+      })
+  }, [])
 
   // Refs for the two header popovers. The trigger refs are handed to the
   // outside-click hook alongside the panel refs, so clicking the bell to close
@@ -143,17 +159,19 @@ export default function App() {
    * @param {SessionUser} u
    * @param {boolean} remember
    */
-  const handleLogin = (u, remember) => {
-    ;(remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(u))
+  const handleLogin = u => {
     setUser(u)
   }
 
   const handleLogout = () => {
-    localStorage.removeItem(SESSION_KEY)
-    sessionStorage.removeItem(SESSION_KEY)
+    // Invalidate any profile request that may still be resolving. Otherwise a
+    // late response could immediately restore the user after sign-out.
+    authRequestId.current += 1
+    writeToken(null)
     setMenuOpen(false)
     setNotifOpen(false)
     setUser(null)
+    setAuthChecking(false)
   }
 
   /** Header shortcut: the submissions register, the portal's primary dataset. */
@@ -197,6 +215,7 @@ export default function App() {
     closeNotif()
   }
 
+  if (authChecking) return null
   if (!user) return <Login onLogin={handleLogin} />
 
   const pageTitle = MODULE_TITLES[active]

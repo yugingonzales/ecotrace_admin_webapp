@@ -80,9 +80,8 @@ const migrations = migrationFiles()
 if (migrations.length === 0) fail(`no .sql files found in ${migrationsDir}`)
 
 // Refuse to run on an ambiguous ordering rather than silently picking one.
-// This check exists because `002_plants_status_unverified.sql` and
-// `002_seed_plants.sql` once shared a prefix, and which of the two ran first
-// decided whether the seed's `unverified` rows had a valid ENUM value.
+// Every active migration must have a unique numeric prefix so its execution
+// order is explicit and deterministic.
 const seen = new Map()
 for (const m of migrations) {
   const prefix = m.name.split('_')[0]

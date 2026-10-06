@@ -95,22 +95,45 @@ export class ApiError extends Error {
 // ── Transport ───────────────────────────────────────────────────────────────
 
 /** @returns {string | null} */
-function readToken() {
+export function readToken() {
   try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY)
+    return localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem(TOKEN_STORAGE_KEY)
   } catch {
     return null
   }
 }
 
 /**
+ * Store the token persistently only when the user selected "Keep me signed in".
+ * A null token always clears both stores, which makes logout definitive.
+ *
  * @param {string | null} token
+ * @param {boolean} [remember]
  * @returns {void}
  */
-export function writeToken(token) {
+export function writeToken(token, remember = false) {
+  if (!token) {
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    } catch {
+      /* localStorage may be unavailable */
+    }
+    try {
+      sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+    } catch {
+      /* sessionStorage may be unavailable */
+    }
+    return
+  }
+
   try {
-    if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token)
-    else localStorage.removeItem(TOKEN_STORAGE_KEY)
+    if (remember) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token)
+      sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+    } else {
+      sessionStorage.setItem(TOKEN_STORAGE_KEY, token)
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    }
   } catch {
     /* storage unavailable (private mode) — the in-memory session still works */
   }
@@ -298,6 +321,17 @@ export function me() {
 export function getOverviewStats() {
   return /** @type {Promise<OverviewStats>} */ (request('/overview'))
 }
+
+/** @param {object} input @returns {Promise<{ token: string, user: object }>} */
+export function register(input) {
+  return request('/auth/register', { method: 'POST', body: input, anonymous: true })
+}
+
+/** @returns {Promise<{ user: object }>} */
+export function getProfile() {
+  return request('/auth/profile')
+}
+
 
 /**
  * `GET /api/plants` → `ecotrace_plants`.

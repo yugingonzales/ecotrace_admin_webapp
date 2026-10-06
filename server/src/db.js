@@ -10,6 +10,7 @@
  * these are read by the Node process, never bundled into the browser: no
  * VITE_ prefix, per the rule in .env.example.
  */
+import 'dotenv/config'
 import mysql from 'mysql2/promise'
 
 export const pool = mysql.createPool({

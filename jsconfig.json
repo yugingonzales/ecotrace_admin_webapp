@@ -1,15 +1,4 @@
 {
-  // Editor configuration only. The project no longer ships the TypeScript
-  // compiler, so this file is never executed by a build or a CI step - it only
-  // tells VS Code how to read the .js/.jsx sources (automatic JSX runtime, ES
-  // modules, DOM+ES2022 libs) so IntelliSense and go-to-definition still work.
-  //
-  // `checkJs`, `strict` and `noEmit` were removed along with the compiler: with
-  // no `tsc` in the tree they have no effect, and leaving them would imply a
-  // typecheck gate that does not exist. The JSDoc annotations throughout src/
-  // are kept regardless - they are the documentation of the schema mirror and
-  // of the call-site contracts, and an editor with checkJs enabled will honour
-  // them again at any time.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -17,10 +6,10 @@
     "moduleResolution": "bundler",
     "moduleDetection": "force",
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] },
     "resolveJsonModule": true,
-    "allowJs": true
+    "allowJs": true,
+    "skipLibCheck": true
   },
   "include": ["src", "vite.config.js", "vitest.config.js"]
 }

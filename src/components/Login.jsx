@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import collegeBg from '../assets/college_of_science.jpg'
 import uepLogo from '../assets/uep_logo.jpg'
+import { ApiError, login, register, writeToken } from '../lib/api'
 
 /** @typedef {'signin' | 'signup'} AuthMode */
 
@@ -15,54 +16,25 @@ import uepLogo from '../assets/uep_logo.jpg'
  * @property {(user: SessionUser, remember: boolean) => void} onLogin
  */
 
-/**
- * JSDoc has no `extends`; an extending interface becomes an intersection.
- * @typedef {SessionUser & { password: string, createdAt: string }} AdminAccount
- */
-
-const ACCOUNTS_KEY = 'ecotrace_admin_accounts'
-
 // -- Customize these to match your institution -- 
 const SCHOOL_NAME = 'EcoTrace Admin Portal'
 const SCHOOL_TAGLINE = ''
-/** @type {AdminAccount} */
-const DEMO_ACCOUNT = {
-  name: 'Admin Jane',
-  email: 'admin@school.edu',
-  password: 'admin123',
-  createdAt: new Date().toISOString(),
-}
-// --
 
-/** @returns {AdminAccount[]} */
-function loadAccounts() {
-  try {
-    const raw = localStorage.getItem(ACCOUNTS_KEY)
-    if (raw) return /** @type {AdminAccount[]} */ (JSON.parse(raw))
-  } catch {
-    /* corrupted storage - reseed below */
+/** @param {unknown} error @returns {string} */
+function apiErrorMessage(error) {
+  if (error instanceof ApiError && error.body && typeof error.body === 'object') {
+    const body = /** @type {{ message?: string }} */ (error.body)
+    if (body.message) return body.message
   }
-  // The reseed write was outside the try, so a storage-denied browser threw
-  // here and took the whole login screen down. The demo account is returned
-  // regardless; persisting it is best-effort.
-  try {
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([DEMO_ACCOUNT]))
-  } catch {
-    /* storage unavailable - the account still works for this session */
-  }
-  return [DEMO_ACCOUNT]
+  return error instanceof Error ? error.message : 'The authentication service is unavailable.'
 }
 
-/** @param {AdminAccount[]} accounts */
-function saveAccounts(accounts) {
-  // Guarded for the same reason loadAccounts is: a full quota or a
-  // storage-denied browser (private mode, blocked third-party storage) throws
-  // on setItem. Without this, signing up crashed the component instead of
-  // degrading to an in-memory session the way the read path already does.
-  try {
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
-  } catch {
-    /* account is still usable for this session; it just will not persist */
+/** @param {object} user @returns {SessionUser} */
+function sessionUser(user) {
+  const account = /** @type {{ name?: string, firstName?: string, lastName?: string, email: string }} */ (user)
+  return {
+    name: account.name || [account.firstName, account.lastName].filter(Boolean).join(' ') || account.email,
+    email: account.email,
   }
 }
 
@@ -75,7 +47,7 @@ export default function Login({ onLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [remember, setRemember] = useState(true)
+  const [remember, setRemember] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState(/** @type {Record<string, string>} */ ({}))
   const [notice, setNotice] = useState('')
@@ -115,46 +87,37 @@ export default function Login({ onLogin }) {
   }
 
   /** @param {import('react').FormEvent<HTMLFormElement>} e */
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault()
     setNotice('')
+    setErrors({})
 
-    if (mode === 'signin') {
-      if (!validateSignIn()) return
-      setLoading(true)
-      setTimeout(() => {
-        const accounts = loadAccounts()
-        const account = accounts.find(
-          a => a.email.toLowerCase() === email.trim().toLowerCase() && a.password === password,
-        )
-        setLoading(false)
-        if (!account) {
-          setErrors({ form: 'Invalid email or password.' })
+    if (mode === 'signin' && !validateSignIn()) return
+    if (mode === 'signup' && !validateSignUp()) return
+
+    setLoading(true)
+    try {
+      if (mode === 'signin') {
+        const data = await login(email.trim(), password)
+        if (data.user?.role_name !== 'admin' && data.user?.role !== 'admin') {
+          writeToken(null)
+          setErrors({ form: 'Access denied: Administrative privileges required.' })
           return
         }
-        onLogin({ name: account.name, email: account.email }, remember)
-      }, 900)
-    } else {
-      if (!validateSignUp()) return
-      setLoading(true)
-      setTimeout(() => {
-        const accounts = loadAccounts()
-        if (accounts.some(a => a.email.toLowerCase() === email.trim().toLowerCase())) {
-          setLoading(false)
-          setErrors({ email: 'An account with this email already exists.' })
-          return
-        }
-        /** @type {AdminAccount} */
-        const account = {
-          name: [firstName, middleName, lastName].map(s => s.trim()).filter(Boolean).join(' '),
-          email: email.trim(),
-          password,
-          createdAt: new Date().toISOString(),
-        }
-        saveAccounts([...accounts, account])
-        setLoading(false)
-        onLogin({ name: account.name, email: account.email }, remember)
-      }, 900)
+        writeToken(data.token, remember)
+        onLogin(sessionUser(data.user), remember)
+      } else {
+        await register({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password, phone: '' })
+        writeToken(null)
+        setNotice('Account created successfully. Public accounts are not permitted to access the admin portal.')
+        setMode('signin')
+        setPassword('')
+        setConfirm('')
+      }
+    } catch (error) {
+      setErrors({ form: apiErrorMessage(error) })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -349,14 +312,15 @@ return (
 
             {mode === 'signin' && (
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
+                <label htmlFor="keep-signed-in" className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
                   <input
+                    id="keep-signed-in"
                     type="checkbox"
                     checked={remember}
                     onChange={e => setRemember(e.target.checked)}
                     style={{ accentColor: 'var(--accent)', width: 13, height: 13 }}
                   />
-                  Remember me
+                  Keep me signed in
                 </label>
                 <button
                   type="button"
