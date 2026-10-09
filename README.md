@@ -1,10 +1,17 @@
 # EcoTrace Admin Portal
 
-React admin UI for the EcoTrace tree-monitoring system, backed by a read-only
+React admin UI for the EcoTrace tree-monitoring system, backed by a
 Node/MariaDB REST API.
 
 Written in JavaScript with JSDoc types. There is no TypeScript in this project
 and no typecheck step — see [Verification](#verification).
+
+> **📚 New Documentation Available**  
+> See [`DOCS_INDEX.md`](./DOCS_INDEX.md) for complete setup guides including:
+> - System architecture overview
+> - Server startup & Flutter app connection troubleshooting
+> - Admin account creation
+> - Database connection explanation
 
 ## Requirements
 
@@ -25,6 +32,7 @@ cp .env.example .env.local     # optional; see below
 `.env.local` is git-ignored. You can skip it entirely: with no `.env.local`,
 `VITE_ENABLE_API` defaults to `false` and every module renders its in-memory
 mock data with no network calls at all. That is the fastest way to see the UI.
+
 
 ## Running
 
@@ -67,10 +75,35 @@ Each server reads its **own** port variable, so they can no longer collide:
 > old `PORT` export in your shell, the API still honours it as a fallback so
 > its behaviour does not silently change. Unset it to get the defaults above.
 
+## Authentication and account provisioning
+
+**Important Update (2026-10-09):** The admin portal now uses **sign-in only** authentication. 
+The sign-up UI has been removed from the login screen.
+
+### Admin Account Setup
+
+Administrative accounts must be manually provisioned in the database. **The schema does NOT 
+create any default admin accounts.**
+
+**To create an admin account:**
+
+1. See [`ADMIN_SETUP.md`](./ADMIN_SETUP.md) for complete instructions
+2. Run the provided SQL script: [`create-admin-user.sql`](./create-admin-user.sql)
+3. Default credentials: `admin@ecotrace.local` / `admin123` (change after first login)
+
+### Authentication Flow
+
+- **Admin Portal:** Uses `POST /api/auth/login` with admin role verification
+- **Flutter App:** Uses both `/api/auth/login` and `/api/auth/register` (volunteer role)
+
+The shared `POST /api/auth/register` endpoint remains enabled for volunteer
+registration from the EcoTrace Flutter app. The backend assigns the `volunteer`
+role server-side, so it cannot be used to create an administrator account.
+
 ## Using the real API
 
-The API is **read-only** — it serves `GET /api/plants` and related routes and
-performs no writes. To point the UI at it:
+The API serves `GET /api/plants` and related routes, along with authentication
+routes described above. To point the UI at it:
 
 1. Start the API on :3000 (above).
 2. Set `VITE_ENABLE_API=true` in `.env.local` and restart `npm run dev`.
@@ -79,7 +112,37 @@ performs no writes. To point the UI at it:
 Database connection details for the server come from the environment, not from
 `.env.local` — that file is for the browser bundle only. Defaults are
 `127.0.0.1:3306`, user `root`, database `ecotrace_db`. Override with `DB_HOST`,
-`DB_PORT`, `DB_USER`, `DB_NAME`, `DB_PASSWORD` in the shell that starts the API.
+`DB_PORT`, `DB_USER`, `DB_NAME`, `DB_PASSWORD` in `server/.env`.
+
+**Database Configuration:**
+The backend connects to the database via `server/.env`:
+```bash
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=ecotrace_db  # Use ecotrace_v2_test for Flutter app's database
+```
+
+See [`DATABASE_CONNECTION_EXPLAINED.md`](./DATABASE_CONNECTION_EXPLAINED.md) for details.
+
+## Connecting Flutter Mobile App
+
+The Flutter app connects to this backend API. **Important:** The app's IP configuration 
+must match your development environment.
+
+### Quick Setup
+
+1. **Start the backend server:** `cd server && npm run dev`
+2. **Find your PC's LAN IP:** `ipconfig` (Windows) or `ifconfig` (Mac/Linux)
+3. **Update Flutter config:** `c:\flutter_workspace\ecotrace\lib\core\config\api_config.dart`
+   ```dart
+   static const String baseUrl = 'http://YOUR_PC_IP:3000/api';
+   ```
+4. **For Android Emulator:** Use `http://10.0.2.2:3000/api`
+5. **Rebuild Flutter app:** `flutter clean && flutter run`
+
+**Troubleshooting connection issues?** See [`SERVER_STARTUP_AND_FLUTTER_CONNECTION.md`](./SERVER_STARTUP_AND_FLUTTER_CONNECTION.md)
 
 ## Verification
 
@@ -131,6 +194,16 @@ server/               Read-only Express 5 + MariaDB REST API
 .figma/make/          Design-tooling scripts and Vite plugins
 ```
 
+## Documentation
+
+Complete guides are available in the root directory:
+
+- **[DOCS_INDEX.md](./DOCS_INDEX.md)** - Start here for navigation to all guides
+- **[ARCHITECTURE_OVERVIEW.md](./ARCHITECTURE_OVERVIEW.md)** - System architecture with diagrams
+- **[ADMIN_SETUP.md](./ADMIN_SETUP.md)** - Admin account creation guide
+- **[SERVER_STARTUP_AND_FLUTTER_CONNECTION.md](./SERVER_STARTUP_AND_FLUTTER_CONNECTION.md)** - Server startup & troubleshooting
+- **[DATABASE_CONNECTION_EXPLAINED.md](./DATABASE_CONNECTION_EXPLAINED.md)** - Database connection details
+
 ## Historical context
 
 [`INTEGRATION_PROGRESS_LOG.md`](INTEGRATION_PROGRESS_LOG.md) is a long-running
@@ -142,3 +215,7 @@ exist specifically to work around problems it documents.
 Most recently it covers the TypeScript → JavaScript migration (§11) and the
 API integration (§7–§9). It is a historical record, not a setup guide — this
 README is the entry point for running the project.
+
+---
+
+**Last Updated:** 2026-10-09
