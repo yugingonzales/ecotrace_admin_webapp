@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import collegeBg from '../assets/college_of_science.jpg'
 import uepLogo from '../assets/uep_logo.jpg'
-import { ApiError, login, register, writeToken } from '../lib/api'
-
-/** @typedef {'signin' | 'signup'} AuthMode */
+import { ApiError, login, writeToken } from '../lib/api'
 
 /**
  * @typedef {object} SessionUser
@@ -40,26 +38,13 @@ function sessionUser(user) {
 
 /** @param {LoginProps} props */
 export default function Login({ onLogin }) {
-  const [mode, setMode] = useState(/** @type {AuthMode} */ ('signin'))
-  const [firstName, setFirstName] = useState('')
-  const [middleName, setMiddleName] = useState('')
-  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
   const [remember, setRemember] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState(/** @type {Record<string, string>} */ ({}))
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
-  /** @param {AuthMode} next */
-  const switchMode = next => {
-    setMode(next)
-    setErrors({})
-    setNotice('')
-    setPassword('')
-    setConfirm('')
-  }
 
   /** @returns {boolean} */
   const validateSignIn = () => {
@@ -72,48 +57,24 @@ export default function Login({ onLogin }) {
     return Object.keys(next).length === 0
   }
 
-  /** @returns {boolean} */
-  const validateSignUp = () => {
-    /** @type {Record<string, string>} */
-    const next = {}
-    if (!firstName.trim()) next.firstName = 'First name is required.'
-    if (!lastName.trim()) next.lastName = 'Last name is required.'
-    if (!email.trim()) next.email = 'Email is required.'
-    else if (!/^\S+@\S+\.\S+$/.test(email)) next.email = 'Enter a valid email address.'
-    if (password.length < 8) next.password = 'Password must be at least 8 characters.'
-    if (confirm !== password) next.confirm = 'Passwords do not match.'
-    setErrors(next)
-    return Object.keys(next).length === 0
-  }
-
   /** @param {import('react').FormEvent<HTMLFormElement>} e */
   const handleSubmit = async e => {
     e.preventDefault()
     setNotice('')
     setErrors({})
 
-    if (mode === 'signin' && !validateSignIn()) return
-    if (mode === 'signup' && !validateSignUp()) return
+    if (!validateSignIn()) return
 
     setLoading(true)
     try {
-      if (mode === 'signin') {
-        const data = await login(email.trim(), password)
-        if (data.user?.role_name !== 'admin' && data.user?.role !== 'admin') {
-          writeToken(null)
-          setErrors({ form: 'Access denied: Administrative privileges required.' })
-          return
-        }
-        writeToken(data.token, remember)
-        onLogin(sessionUser(data.user), remember)
-      } else {
-        await register({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password, phone: '' })
+      const data = await login(email.trim(), password)
+      if (data.user?.role_name !== 'admin' && data.user?.role !== 'admin') {
         writeToken(null)
-        setNotice('Account created successfully. Public accounts are not permitted to access the admin portal.')
-        setMode('signin')
-        setPassword('')
-        setConfirm('')
+        setErrors({ form: 'Access denied: Administrative privileges required.' })
+        return
       }
+      writeToken(data.token, remember)
+      onLogin(sessionUser(data.user), remember)
     } catch (error) {
       setErrors({ form: apiErrorMessage(error) })
     } finally {
@@ -159,33 +120,11 @@ return (
         </div>
 
         <div className="modal-body" style={{ padding: '22px 24px 18px' }}>
-          {/* Segmented control */}
-          <div className="grid grid-cols-2 gap-1 p-1 rounded-lg mb-6" style={{ background: 'var(--surface-muted)' }}>
-            {/** @type {AuthMode[]} */ (['signin', 'signup']).map(m => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => switchMode(m)}
-                className="py-2 rounded-md text-xs font-medium transition-colors"
-                style={{
-                  background: mode === m ? '#fff' : 'transparent',
-                  color: mode === m ? 'var(--accent-dark)' : 'var(--text-muted)',
-                  boxShadow: mode === m ? '0 1px 3px rgba(16,24,40,0.12)' : 'none',
-                  border: mode === m ? '1px solid var(--border)' : '1px solid transparent',
-                }}
-              >
-                {m === 'signin' ? 'Sign In' : 'Create Account'}
-              </button>
-            ))}
-          </div>
-
           <h2 className="font-semibold" style={{ fontSize: 18, color: 'var(--text)' }}>
-            {mode === 'signin' ? 'Welcome back' : 'Register an administrator'}
+            Welcome back
           </h2>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {mode === 'signin'
-              ? 'Sign in to access the administrative dashboard.'
-              : 'Create an administrative account for dashboard access.'}
+            Sign in to access the administrative dashboard.
           </p>
 
           {errors.form && (
@@ -195,53 +134,6 @@ return (
             </div>
           )}
 <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4" noValidate>
-            {mode === 'signup' && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="login-first-name" className="field-label">First name</label>
-                  <input
-                    id="login-first-name"
-                    type="text"
-                    value={firstName}
-                    onChange={e => setFirstName(e.target.value)}
-                    placeholder="Juan"
-                    className="input"
-                    style={{ borderColor: errors.firstName ? 'var(--danger)' : undefined }}
-                  />
-                  {errorMark('firstName')}
-                </div>
-                <div>
-                  <label htmlFor="login-last-name" className="field-label">Last name</label>
-                  <input
-                    id="login-last-name"
-                    type="text"
-                    value={lastName}
-                    onChange={e => setLastName(e.target.value)}
-                    placeholder="Dela Cruz"
-                    className="input"
-                    style={{ borderColor: errors.lastName ? 'var(--danger)' : undefined }}
-                  />
-                  {errorMark('lastName')}
-                </div>
-              </div>
-            )}
-
-            {mode === 'signup' && (
-              <div>
-                <label htmlFor="login-middle-name" className="field-label">
-                  Middle name <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>(optional)</span>
-                </label>
-                <input
-                  id="login-middle-name"
-                  type="text"
-                  value={middleName}
-                  onChange={e => setMiddleName(e.target.value)}
-                  placeholder="A."
-                  className="input"
-                />
-              </div>
-            )}
-
             <div>
               <label htmlFor="login-email" className="field-label">Email address</label>
               <input
@@ -265,8 +157,8 @@ return (
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder={mode === 'signup' ? 'Minimum 8 characters' : 'password'}
-                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  placeholder="password"
+                  autoComplete="current-password"
                   className="input"
                   style={{ borderColor: errors.password ? 'var(--danger)' : undefined, paddingRight: 38 }}
                 />
@@ -293,25 +185,7 @@ return (
               {errorMark('password')}
             </div>
 
-            {mode === 'signup' && (
-              <div>
-                <label htmlFor="login-confirm" className="field-label">Confirm password</label>
-                <input
-                  id="login-confirm"
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
-                  placeholder="Re-enter password"
-                  autoComplete="new-password"
-                  className="input"
-                  style={{ borderColor: errors.confirm ? 'var(--danger)' : undefined }}
-                />
-                {errorMark('confirm')}
-              </div>
-            )}
-
-            {mode === 'signin' && (
-              <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
                 <label htmlFor="keep-signed-in" className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
                   <input
                     id="keep-signed-in"
@@ -330,8 +204,7 @@ return (
                 >
                   Forgot password?
                 </button>
-              </div>
-            )}
+            </div>
 
             <button
               type="submit"
@@ -342,11 +215,11 @@ return (
               {loading ? (
                 <>
                   <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  {mode === 'signin' ? 'Signing in' : 'Creating account'}
+                  Signing in
                 </>
               ) : (
                 <>
-                  {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                  Sign In
                 </>
               )}
             </button>
