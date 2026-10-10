@@ -8,13 +8,10 @@ import SubmissionsView from './components/modules/SubmissionsView'
 import MapView from './components/modules/MapView'
 import Analytics from './components/modules/Analytics'
 import AuditLogs from './components/modules/AuditLogs'
-import {
-  LEGACY_NOTIFICATION_TARGET,
-  MODULE_TITLES,
-  usePortal,
-} from './lib/store'
+import { LEGACY_NOTIFICATION_TARGET, MODULE_TITLES, usePortal } from './lib/store'
 import { useEscapeToClose } from './lib/useEscapeToClose'
 import { useOutsideClick } from './lib/useOutsideClick'
+import { useSidebarWidth } from './lib/useSidebarWidth'
 import { downloadCsv } from './lib/csv'
 import { getProfile, readToken, writeToken } from './lib/api'
 
@@ -22,8 +19,6 @@ import { getProfile, readToken, writeToken } from './lib/api'
 /** @typedef {import('./components/Login.jsx').SessionUser} SessionUser */
 /** @typedef {import('./lib/store.js').NotifType} NotifType */
 /** @typedef {import('./lib/store.js').NotificationTarget} NotificationTarget */
-
-const SIDEBAR_WIDTH = 220
 
 /** @param {string} name @returns {string} */
 function getInitials(name) {
@@ -47,12 +42,14 @@ function timeAgo(ts) {
   if (hr < 24) return `${hr}h ago`
   const day = Math.floor(hr / 24)
   if (day < 7) return `${day}d ago`
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return new Date(ts).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 /** @param {NotifType} type @returns {string} */
-const notifTone = type =>
-  type === 'error' ? 'badge-danger' : type === 'warning' ? 'badge-warning' : 'badge-accent'
+const notifTone = type => (type === 'error' ? 'badge-danger' : type === 'warning' ? 'badge-warning' : 'badge-accent')
 
 /** @param {NotifType} type @returns {string} */
 const notifGlyph = type => (type === 'error' ? '⚠' : type === 'warning' ? '!' : 'i')
@@ -62,8 +59,7 @@ const notifGlyph = type => (type === 'error' ? '⚠' : type === 'warning' ? '!' 
  * @param {NotificationTarget} t
  * @returns {string}
  */
-const targetLabel = t =>
-  t.module === 'submissions' ? 'Open in Submissions' : `Go to ${MODULE_TITLES[t.module]}`
+const targetLabel = t => (t.module === 'submissions' ? 'Open in Submissions' : `Go to ${MODULE_TITLES[t.module]}`)
 
 /**
  * A module pane that stays mounted after its first visit.
@@ -85,7 +81,8 @@ function ModulePane({ show, children }) {
 }
 
 export default function App() {
-  const { active, visited, navigate, notifications, unreadCount, pendingCount, submissions, attention, storeActions } = usePortal()
+  const { active, visited, navigate, notifications, unreadCount, pendingCount, submissions, attention, storeActions } =
+    usePortal()
   const [notifOpen, setNotifOpen] = useState(false)
   // Lazy initialiser: the argument is the thunk `readSession`, not a SessionUser.
   const [user, setUser] = useState(/** @type {SessionUser | null} */ (null))
@@ -144,6 +141,17 @@ export default function App() {
   useOutsideClick([notifPanelRef, notifBtnRef], closeNotif, notifOpen)
   useOutsideClick([menuPanelRef, menuBtnRef], closeMenu, menuOpen)
 
+  // Rail width. Held here rather than inside Sidebar because *two* elements
+  // render from it — the rail itself and this column's left offset below — and
+  // the moment the value can change, two independent copies of it is one
+  // pointer move away from the rail and the content overlapping. See
+  // `useSidebarWidth` for the rest of that reasoning.
+  //
+  // Called unconditionally, above the auth/`!user` early returns further down:
+  // it is a hook, so skipping it on the signed-out render would break the
+  // order for every later render.
+  const sidebar = useSidebarWidth()
+
   // Only one header popover at a time. They are anchored to the same corner and
   // would otherwise sit on top of each other.
   const toggleNotif = () => {
@@ -177,22 +185,44 @@ export default function App() {
   /** Header shortcut: the submissions register, the portal's primary dataset. */
   const handleExport = () => {
     const rows = submissions.map(s => [
-      s.id, s.staffName, s.staffId, s.staffType, s.treeTag, s.species,
-      s.type, s.status, s.event, s.date, s.lat, s.lng,
-      s.incidentType ?? '', s.declineReason ?? '', s.notes ?? '',
+      s.id,
+      s.staffName,
+      s.staffId,
+      s.staffType,
+      s.treeTag,
+      s.species,
+      s.type,
+      s.status,
+      s.event,
+      s.date,
+      s.lat,
+      s.lng,
+      s.incidentType ?? '',
+      s.declineReason ?? '',
+      s.notes ?? '',
     ])
     const n = downloadCsv(
       'ecotrace_submissions_register.csv',
-      ['Submission ID', 'Staff', 'Staff ID', 'Staff Type', 'Tree Tag', 'Species', 'Type', 'Status',
-        'Event', 'Submitted', 'Latitude', 'Longitude', 'Incident Type', 'Decline Reason', 'Notes'],
+      [
+        'Submission ID',
+        'Staff',
+        'Staff ID',
+        'Staff Type',
+        'Tree Tag',
+        'Species',
+        'Type',
+        'Status',
+        'Event',
+        'Submitted',
+        'Latitude',
+        'Longitude',
+        'Incident Type',
+        'Decline Reason',
+        'Notes',
+      ],
       rows,
     )
     storeActions.recordExport(`Exported the submissions register (CSV) — ${n.toLocaleString()} records`, n)
-  }
-
-  const handleReset = () => {
-    storeActions.resetDemoData()
-    setMenuOpen(false)
   }
 
   /**
@@ -208,7 +238,12 @@ export default function App() {
    */
   const goTo = target => {
     if (target.module === 'submissions') {
-      navigate('submissions', { status: target.status, type: target.type, treeTag: target.treeTag, event: target.event })
+      navigate('submissions', {
+        status: target.status,
+        type: target.type,
+        treeTag: target.treeTag,
+        event: target.event,
+      })
     } else {
       navigate(target.module)
     }
@@ -222,35 +257,68 @@ export default function App() {
   const sortedNotifications = [...notifications].sort((a, b) => b.time - a.time)
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', fontFamily: 'Inter, sans-serif' }}>
-      <Sidebar active={active} onNavigate={m => navigate(m)} user={user} pendingCount={pendingCount} />
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+      <Sidebar
+        active={active}
+        onNavigate={m => navigate(m)}
+        user={user}
+        pendingCount={pendingCount}
+        width={sidebar.width}
+        maxWidth={sidebar.maxWidth}
+        resizing={sidebar.resizing}
+        onResizeStart={sidebar.startResize}
+        onResizeKeyDown={sidebar.onHandleKeyDown}
+        onResizeReset={sidebar.resetWidth}
+      />
 
-      {/* Main area */}
-      <div style={{ marginLeft: SIDEBAR_WIDTH, flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* Top header */}
-        <header
-          className="flex items-center justify-between px-6 py-3 sticky top-0 z-30"
-          style={{ background: 'rgba(247,248,250,0.92)', borderBottom: '1px solid var(--border)', backdropFilter: 'blur(8px)' }}
-        >
-          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            <span style={{ color: 'var(--accent-dark)', fontWeight: 600 }}>EcoTrace Admin Portal</span>
-            <span style={{ color: 'var(--text-faint)' }}>/</span>
-            <span>{pageTitle}</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* System year indicator */}
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs badge-accent">
-              <div className="w-2 h-2 rounded-full" style={{ background: 'var(--accent)' }} />
-              S.Y. 2025–2026
+      {/* Main area. The rail's `width` and this `marginLeft` are one number from
+          one hook call — which is the whole reason that number stopped being a
+          constant. Two elements at a *fixed* width cannot drift apart; two fed a
+          changing width from two places can, and the failure looks like the page
+          sliding under the sidebar halfway through a drag. */}
+      <div
+        style={{
+          marginLeft: sidebar.width,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+        }}
+      >
+        {/* Top header — same forest gradient as the field app's chrome, with the
+            module name promoted to the headline and the S.Y. tag as its eyebrow.
+            The `sticky top-0 z-30` utilities stay on the element because
+            mapStacking.test.js pins them as the map-stacking contract. */}
+        <header className="eco-header sticky top-0 z-30">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="eco-header-mark" aria-hidden="true">
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <path d="M10 18V9" strokeLinecap="round" />
+                <path
+                  d="M10 9C10 9 4.5 8.4 3 3.5c4.8-.6 7 2.6 7 5.5z"
+                  fill="currentColor"
+                  stroke="none"
+                  opacity="0.9"
+                />
+                <path
+                  d="M10 11.5c0 0 4.9-1 6.4-5.4-4.4-.5-6.4 2.6-6.4 5.4z"
+                  fill="currentColor"
+                  stroke="none"
+                  opacity="0.65"
+                />
+              </svg>
             </div>
-
+            <div className="min-w-0">
+              <div className="eco-header-eyebrow">S.Y. 2025–2026 · UEP EcoTrace</div>
+              <h1 className="eco-header-title truncate">{pageTitle}</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
             {/* Notification bell */}
             <div className="relative">
               <button
                 ref={notifBtnRef}
-                className="relative p-2 rounded-md btn"
-                style={{ padding: 6 }}
+                className="eco-header-icon-btn"
                 onClick={toggleNotif}
                 title="Notifications"
                 aria-haspopup="true"
@@ -261,23 +329,11 @@ export default function App() {
                   <path d="M8 1a5 5 0 015 5v3l1.5 2H1.5L3 9V6a5 5 0 015-5z" />
                   <path d="M6.5 13a1.5 1.5 0 003 0" />
                 </svg>
-                {unreadCount > 0 && (
-                  <span
-                    className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                    style={{ minWidth: 16, height: 16, padding: '0 4px', background: 'var(--danger)' }}
-                  >
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
+                {unreadCount > 0 && <span className="eco-header-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}
               </button>
 
-
               {notifOpen && (
-                <div
-                  ref={notifPanelRef}
-                  className="absolute right-0 top-10 z-50 w-80 rounded-lg card"
-                  style={{ boxShadow: '0 12px 32px rgba(16,24,40,0.14)' }}
-                >
+                <div ref={notifPanelRef} className="eco-header-panel w-80">
                   <div
                     className="flex items-center justify-between px-4 py-3 border-b"
                     style={{ borderColor: 'var(--border)' }}
@@ -317,7 +373,11 @@ export default function App() {
                             <span className="flex-1 min-w-0 text-xs leading-snug" style={{ color: 'var(--text)' }}>
                               {item.msg}
                             </span>
-                            <span className="mt-1 shrink-0 text-sm leading-none" style={{ color: 'var(--text-faint)' }} aria-hidden="true">
+                            <span
+                              className="mt-1 shrink-0 text-sm leading-none"
+                              style={{ color: 'var(--text-faint)' }}
+                              aria-hidden="true"
+                            >
                               ›
                             </span>
                           </button>
@@ -349,7 +409,7 @@ export default function App() {
                           title={targetLabel(n.target ?? LEGACY_NOTIFICATION_TARGET)}
                           className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-gray-50 focus-visible:bg-gray-50"
                           style={{
-                            background: n.read ? '#fff' : 'var(--accent-soft)',
+                            background: n.read ? 'var(--field)' : 'var(--accent-soft)',
                             borderBottom: '1px solid var(--border)',
                           }}
                         >
@@ -371,7 +431,11 @@ export default function App() {
                           {/* The affordance that makes the row read as a link rather
                               than as static text. Decorative — the row's accessible
                               name carries the destination. */}
-                          <span className="mt-1 shrink-0 text-sm leading-none" style={{ color: 'var(--text-faint)' }} aria-hidden="true">
+                          <span
+                            className="mt-1 shrink-0 text-sm leading-none"
+                            style={{ color: 'var(--text-faint)' }}
+                            aria-hidden="true"
+                          >
                             ›
                           </span>
                         </button>
@@ -381,9 +445,8 @@ export default function App() {
                 </div>
               )}
             </div>
-
             {/* Export shortcut — the submissions register */}
-            <button className="btn btn-sm" onClick={handleExport} title="Download the submissions register as CSV">
+            <button className="eco-header-btn" onClick={handleExport} title="Download the submissions register as CSV">
               Export ↓
             </button>
 
@@ -391,8 +454,8 @@ export default function App() {
             <div className="relative">
               <button
                 ref={menuBtnRef}
-                className="flex items-center justify-center rounded-full text-xs font-semibold"
-                style={{ width: 32, height: 32, background: 'var(--accent)', color: 'white' }}
+                className="eco-avatar"
+                style={{ width: 34, height: 34, fontSize: 12 }}
                 onClick={toggleMenu}
                 title={user.email}
                 aria-haspopup="menu"
@@ -401,24 +464,15 @@ export default function App() {
                 {getInitials(user.name)}
               </button>
               {menuOpen && (
-                <div
-                  ref={menuPanelRef}
-                  className="absolute right-0 top-10 z-50 w-64 rounded-lg card"
-                  style={{ boxShadow: '0 12px 32px rgba(16,24,40,0.14)' }}
-                  role="menu"
-                >
+                <div ref={menuPanelRef} className="eco-header-panel w-64" role="menu">
                   <div className="px-4 py-3 border-b text-xs" style={{ borderColor: 'var(--border)' }}>
-                    <div className="font-medium" style={{ color: 'var(--text)' }}>{user.name}</div>
-                    <div className="mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{user.email}</div>
+                    <div className="font-medium" style={{ color: 'var(--text)' }}>
+                      {user.name}
+                    </div>
+                    <div className="mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+                      {user.email}
+                    </div>
                   </div>
-                  <button
-                    onClick={handleReset}
-                    className="w-full text-left px-4 py-2.5 text-xs hover:bg-gray-50"
-                    style={{ color: 'var(--text-muted)' }}
-                    role="menuitem"
-                  >
-                    Reset demo data
-                  </button>
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-2.5 text-xs rounded-b-lg hover:bg-gray-50"
@@ -432,43 +486,39 @@ export default function App() {
             </div>
           </div>
         </header>
-
-
-        {/* Stated once, at the top, instead of being implied by every button. */}
-        <div
-          className="flex items-center justify-between gap-3 px-6 py-2 text-[11px]"
-          style={{ background: 'var(--warning-soft)', color: '#92400e', borderBottom: '1px solid var(--border)' }}
-          role="note"
-        >
-          <span>
-            <strong>Read-only database.</strong> Approvals, declines and events are saved in this browser only —
-            nothing is written to MariaDB yet, and the map keeps showing server-side statuses.
-          </span>
-          <button onClick={handleReset} className="underline font-semibold whitespace-nowrap" style={{ color: '#92400e' }}>
-            Reset demo data
-          </button>
-        </div>
-
         {/* Page content — every visited module stays mounted so its state survives
+
             a tab switch. MapView and the boundary editor re-measure on re-show. */}
         <main className="flex-1 p-6 overflow-y-auto">
           {visited.includes('overview') && (
-            <ModulePane show={active === 'overview'}><Overview /></ModulePane>
+            <ModulePane show={active === 'overview'}>
+              <Overview />
+            </ModulePane>
           )}
           {visited.includes('events') && (
-            <ModulePane show={active === 'events'}><EventManagement /></ModulePane>
+            <ModulePane show={active === 'events'}>
+              <EventManagement />
+            </ModulePane>
           )}
           {visited.includes('submissions') && (
-            <ModulePane show={active === 'submissions'}><SubmissionsView /></ModulePane>
+            <ModulePane show={active === 'submissions'}>
+              <SubmissionsView />
+            </ModulePane>
           )}
           {visited.includes('map') && (
-            <ModulePane show={active === 'map'}><MapView /></ModulePane>
+            <ModulePane show={active === 'map'}>
+              <MapView />
+            </ModulePane>
           )}
           {visited.includes('analytics') && (
-            <ModulePane show={active === 'analytics'}><Analytics /></ModulePane>
+            <ModulePane show={active === 'analytics'}>
+              <Analytics />
+            </ModulePane>
           )}
           {visited.includes('logs') && (
-            <ModulePane show={active === 'logs'}><AuditLogs /></ModulePane>
+            <ModulePane show={active === 'logs'}>
+              <AuditLogs />
+            </ModulePane>
           )}
         </main>
       </div>
@@ -477,4 +527,3 @@ export default function App() {
     </div>
   )
 }
-

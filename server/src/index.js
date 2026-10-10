@@ -47,9 +47,19 @@ app.use((_req, res) => {
 
 // Central error handler. Logs server-side, returns a generic message to the
 // client - SQL text and connection details do not belong in an HTTP response.
+//
+// The status is carried through instead of being hardcoded to 500. Express and
+// body-parser tag the client's own mistakes (malformed JSON, oversized body)
+// with a 4xx `status`/`statusCode`; reporting those as 500 told a caller the
+// server was broken, and the real cause only ever appeared in this log.
 app.use((error, _req, res, _next) => {
-  console.error('[ecotrace-api] unhandled error:', error)
-  res.status(500).json({ error: 'internal_error', message: 'Unexpected server error.' })
+  const status = Number(error?.status ?? error?.statusCode ?? 500) || 500
+  const serverFault = status >= 500
+  if (serverFault) console.error('[ecotrace-api] unhandled error:', error)
+  res.status(status).json({
+    error: serverFault ? 'internal_error' : 'invalid_request',
+    message: serverFault ? 'Unexpected server error.' : 'The request body could not be read.',
+  })
 })
 
 let server

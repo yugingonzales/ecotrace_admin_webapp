@@ -2,7 +2,13 @@ import { z } from 'zod'
 import { pool } from './db.js'
 import { hashPassword, verifyPassword, signUserToken, publicUser } from './auth.js'
 
-const loginCredentials = z.object({ username: z.string().trim().min(1).max(80), password: z.string().min(8).max(128) })
+const loginCredentials = z.object({ 
+  email: z.string().trim().min(1).max(254).optional(),
+  username: z.string().trim().min(1).max(80).optional(), 
+  password: z.string().min(8).max(128) 
+}).refine(data => data.email || data.username, {
+  message: 'Either email or username is required'
+})
 const registration = z.object({
   username: z.string().trim().min(3).max(80).regex(/^[a-zA-Z0-9_.-]+$/),
   email: z.string().email().max(254),
@@ -62,9 +68,12 @@ export async function login(req, res, next) {
   const parsed = loginCredentials.safeParse(req.body)
   if (!parsed.success) return invalid(res, parsed)
   try {
-    const user = await findByUsername(parsed.data.username)
+    // Support both email and username login
+    const user = parsed.data.email 
+      ? await findByEmail(parsed.data.email)
+      : await findByUsername(parsed.data.username)
     if (!user) {
-      return res.status(401).json({ error: 'account_not_found', message: 'No account was found for this username.' })
+      return res.status(401).json({ error: 'account_not_found', message: 'No account was found for this email or username.' })
     }
     if (user.status !== 'active') {
       return res.status(401).json({ error: 'account_unavailable', message: 'This account is unavailable. Please contact an administrator.' })

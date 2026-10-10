@@ -22,10 +22,10 @@ import MapAutoResize from '../map/MapAutoResize'
 
 /** @type {Record<StatusKey, StatusStyle>} */
 const statusConfig = {
-  verified: { color: '#2f9e6e', label: 'Verified & Healthy', stroke: '#237a54' },
-  pending: { color: '#d9902b', label: 'Pending Verification', stroke: '#b06e16' },
-  incident: { color: '#dc3a3a', label: 'Incident / Declined', stroke: '#b02a2a' },
-  unverified: { color: '#9aa1a9', label: 'Unverified / Missing', stroke: '#6b7280' },
+  verified: { color: '#0d6e4f', label: 'Verified & Healthy', stroke: '#0d382c' },
+  pending: { color: '#ffd600', label: 'Pending Verification', stroke: '#b26a00' },
+  incident: { color: '#c74545', label: 'Incident / Declined', stroke: '#9c2f2f' },
+  unverified: { color: '#8eb3a0', label: 'Unverified / Missing', stroke: '#6b8277' },
 }
 
 /**
@@ -43,7 +43,7 @@ const makeIcon = (color, stroke, incident, active) => {
       background:${color};border:2px solid ${active ? '#ffffff' : stroke};
       display:flex;align-items:center;justify-content:center;
       box-shadow:0 1px 5px rgba(0,0,0,0.35);cursor:pointer;
-      font:700 ${Math.round(size * 0.5)}px/1 Inter,sans-serif;color:#ffffff;">
+      font:700 ${Math.round(size * 0.5)}px/1 'Segoe UI',system-ui,-apple-system,sans-serif;color:#ffffff;">
       ${incident ? '!' : ''}
     </div>`,
     iconSize: [size, size],
@@ -159,7 +159,7 @@ export default function MapView() {
           {stale && (
             <div
               className="flex items-center justify-between gap-3 px-4 py-2 text-xs"
-              style={{ background: '#fef3c7', color: '#92400e', borderBottom: '1px solid #fcd34d' }}
+              style={{ background: 'rgba(255,214,0,0.16)', color: '#7a5a00', borderBottom: '1px solid rgba(255,214,0,0.5)' }}
               role="status"
             >
               <span>

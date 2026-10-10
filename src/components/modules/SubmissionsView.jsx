@@ -127,7 +127,7 @@ function DetailDrawer({
   return (
     <>
       <div className="fixed inset-0 z-30" style={{ background: 'rgba(16,24,40,0.25)' }} onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-40 flex flex-col" style={{ width: 460, background: '#fff', borderLeft: '1px solid var(--border)', boxShadow: '-8px 0 30px rgba(16,24,40,0.1)' }}>
+      <div className="fixed inset-y-0 right-0 z-40 flex flex-col" style={{ width: 460, background: 'var(--field)', borderLeft: '1px solid var(--border)', boxShadow: '-8px 0 30px rgba(11,31,23,0.14)' }}>
       <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
         <div>
           <div className="flex items-center gap-2">
@@ -355,7 +355,7 @@ export default function SubmissionsView() {
           </svg>
           <input
             className="input text-xs"
-            style={{ paddingLeft: 30, background: '#fff' }}
+            style={{ paddingLeft: 30, background: 'var(--field)' }}
             placeholder="Search by staff name, ID, tree tag, species..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -368,7 +368,7 @@ export default function SubmissionsView() {
               key={v}
               onClick={() => setFilter(v)}
               className="px-3 py-2 transition-colors"
-              style={{ background: filter === v ? 'var(--accent)' : '#fff', color: filter === v ? 'white' : 'var(--text-muted)' }}
+              style={{ background: filter === v ? 'var(--accent)' : 'var(--field)', color: filter === v ? 'white' : 'var(--text-muted)' }}
             >
               {l}
             </button>
@@ -495,7 +495,7 @@ export default function SubmissionsView() {
               return (
                 <tr
                   key={sub.id}
-                  style={{ background: isSelected ? 'var(--accent-soft)' : sub.type === 'incident' && sub.status === 'pending' ? '#fffdf5' : '' }}
+                  style={{ background: isSelected ? 'var(--accent-soft)' : sub.type === 'incident' && sub.status === 'pending' ? 'rgba(255,214,0,0.08)' : '' }}
                 >
                   <td>
                     <div

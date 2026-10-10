@@ -1,0 +1,96 @@
+/**
+ * EcoTrace Design System - Modals, Overlays & Utilities
+ */
+
+.eco-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 35, 28, 0.62);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-modal-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: eco-fade-in var(--transition-base);
+}
+
+@keyframes eco-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.eco-modal {
+  background: var(--field);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-canopy);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: eco-slide-up var(--transition-slow);
+  border: 1px solid var(--border);
+}
+
+@keyframes eco-slide-up {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.eco-modal-header {
+  padding: 22px 24px;
+  background: var(--gradient-header);
+  color: #fff;
+}
+
+.eco-modal-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  margin: 0;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.eco-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.eco-modal-footer {
+  padding: 18px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  background: var(--canvas);
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILITIES
+   ══════════════════════════════════════════════════════ */
+
+.eco-text-forest { color: var(--forest); }
+.eco-text-leaf { color: var(--leaf-deep); }
+.eco-text-muted { color: var(--text-muted); }
+.eco-text-error { color: var(--error); }
+
+.eco-bg-forest { background: var(--forest); }
+.eco-bg-canvas { background: var(--canvas); }
+.eco-bg-field { background: var(--field); }
+
+.eco-rounded-sm { border-radius: var(--radius-sm); }
+.eco-rounded-md { border-radius: var(--radius-md); }
+.eco-rounded-lg { border-radius: var(--radius-lg); }
+.eco-rounded-full { border-radius: var(--radius-full); }
+
+.eco-shadow-sm { box-shadow: var(--shadow-sm); }
+.eco-shadow-md { box-shadow: var(--shadow-md); }
+.eco-shadow-lg { box-shadow: var(--shadow-lg); }
+
+.eco-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

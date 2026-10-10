@@ -34,7 +34,7 @@ const speciesSurvival = [
 const incidentTypes = [
   { name: 'Dead / Uprooted', value: 38, color: 'var(--danger)' },
   { name: 'Location Mismatch', value: 22, color: 'var(--warning)' },
-  { name: 'Restricted Area', value: 8, color: '#ec4899' },
+  { name: 'Restricted Area', value: 8, color: 'var(--leaf-deep)' },
 ]
 
 // `staffProgress` used to be a hard-coded 8-row table that no filter or button
@@ -56,7 +56,7 @@ function SectionLabel({ children }) {
 }
 
 const tooltipStyle = {
-  contentStyle: { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, color: 'var(--text)' },
+  contentStyle: { background: 'var(--field)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 11, color: 'var(--text)' },
   itemStyle: { color: 'var(--text)', fontSize: 11 },
   labelStyle: { color: 'var(--text-muted)', fontSize: 11 },
 }

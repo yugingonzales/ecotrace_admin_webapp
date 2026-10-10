@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" width="640" height="420" role="img" aria-label="Uprooted tree incident, field evidence placeholder">
+  <defs>
+    <linearGradient id="skyd" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f2efe8"/>
+      <stop offset="100%" stop-color="#e4ded1"/>
+    </linearGradient>
+    <linearGradient id="dead" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#8b6f47"/>
+      <stop offset="100%" stop-color="#5a472c"/>
+    </linearGradient>
+    <linearGradient id="soil" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8b6f47"/>
+      <stop offset="100%" stop-color="#4a3a29"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="420" fill="url(#skyd)"/>
+  <path d="M0 356 Q180 330 340 358 T640 350 L640 420 L0 420 Z" fill="#0d382c" opacity="0.12"/>
+  <ellipse cx="470" cy="368" rx="112" ry="30" fill="url(#soil)"/>
+  <g transform="translate(96 372) rotate(-58)">
+    <rect x="-13" y="-250" width="26" height="256" rx="8" fill="url(#dead)"/>
+    <path d="M0 -196 L-84 -250 M0 -212 L82 -262 M0 -150 L-70 -186 M0 -108 L74 -146"
+          stroke="url(#dead)" stroke-width="14" stroke-linecap="round" fill="none"/>
+    <g fill="#8b6f47" opacity="0.85">
+      <path d="M-84 -250 l-34 -18 l30 2 z"/>
+      <path d="M82 -262 l36 -16 l-30 -2 z"/>
+      <path d="M-70 -186 l-32 -20 l28 0 z"/>
+      <path d="M74 -146 l34 -18 l-28 -2 z"/>
+    </g>
+  </g>
+  <g stroke="#c74545" stroke-width="6" stroke-linecap="round" opacity="0.9" fill="none">
+    <circle cx="472" cy="364" r="46" stroke-dasharray="14 12"/>
+  </g>
+  <rect x="0" y="392" width="640" height="28" fill="#0d382c" opacity="0.14"/>
+  <text x="24" y="46" font-family="Segoe UI, system-ui, sans-serif" font-size="15" font-weight="700" fill="#8a2f2f" opacity="0.7">FIELD EVIDENCE · INCIDENT</text>
+</svg>

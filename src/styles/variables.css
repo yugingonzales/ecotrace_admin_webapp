@@ -1,0 +1,130 @@
+/**
+ * EcoTrace Design System - Variables
+ * Matches Flutter app theme (lib/core/theme/app_theme.dart)
+ */
+
+:root {
+  /* ═══════════════════════════════════════════════════════
+     COLORS - Matched from Flutter EcoTraceColors
+     ══════════════════════════════════════════════════════ */
+  
+  /* Primary Forest Green Palette */
+  --forest: #0d382c;           /* EcoTraceColors.forest */
+  --forest-deep: #0b1f17;      /* EcoTraceColors.forestDeep */
+  --forest-dark: #0a2a20;      /* EcoTraceColors.forestDark */
+  --canopy: #03461f;           /* EcoTraceColors.canopy */
+  
+  /* Accent Leaf Green Palette */
+  --leaf: #b5ea87;             /* EcoTraceColors.leaf */
+  --leaf-deep: #9cdd6e;        /* EcoTraceColors.leafDeep */
+  --lemon: #ffd600;            /* EcoTraceColors.lemon (secondary accent) */
+  
+  /* Surface & Background */
+  --canvas: #f4f7f5;           /* EcoTraceColors.canvas (main background) */
+  --field: #ffffff;            /* EcoTraceColors.field (input/card background) */
+  --border: #e1e8e3;           /* EcoTraceColors.border */
+  
+  /* Text Colors */
+  --text: #0a231c;             /* Main text (from Flutter textTheme) */
+  --text-muted: #6b8277;       /* EcoTraceColors.muted */
+  --text-soft: #8eb3a0;        /* EcoTraceColors.softText */
+  --text-hint: #a3b5ab;        /* Input hint color (from Flutter) */
+  
+  /* Feedback Colors */
+  --error: #c74545;            /* EcoTraceColors.error */
+  --success: #0d6e4f;          /* From gradient in EcoTraceHeader */
+  --warning: #ff9800;
+  --info: #2196f3;
+  
+  /* Gradients (from Flutter EcoTraceHeader) */
+  --gradient-header: linear-gradient(135deg, #0d6e4f 0%, #05291d 100%);
+  --gradient-primary: linear-gradient(135deg, var(--forest) 0%, var(--forest-deep) 100%);
+  
+  /* ═══════════════════════════════════════════════════════
+     SPACING & SIZING
+     ══════════════════════════════════════════════════════ */
+  
+  --radius-sm: 12px;           /* Matches Flutter BorderRadius.circular(12) */
+  --radius-md: 20px;           /* Matches Flutter SurfaceCard BorderRadius.circular(20) */
+  --radius-lg: 26px;           /* Matches Flutter EcoTraceHeader BorderRadius.circular(26) */
+  --radius-full: 999px;
+  
+  /* Shadows (from Flutter SurfaceCard BoxShadow) */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.08); /* Matches Flutter boxShadow color: 0x08000000 */
+  
+  /* Elevation shadows with soft green tint */
+  --shadow-forest: 0 4px 12px rgba(13, 56, 44, 0.15);
+  --shadow-canopy: 0 8px 24px rgba(3, 70, 31, 0.2);
+  
+  /* ═══════════════════════════════════════════════════════
+     TYPOGRAPHY
+     ══════════════════════════════════════════════════════ */
+  
+  --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  --font-mono: 'SF Mono', 'Roboto Mono', 'Consolas', 'Monaco', monospace;
+  
+  /* Font Sizes */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  
+  /* Font Weights */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  
+  /* ═══════════════════════════════════════════════════════
+     TRANSITIONS
+     ══════════════════════════════════════════════════════ */
+  
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* ═══════════════════════════════════════════════════════
+     Z-INDEX LAYERS
+     ══════════════════════════════════════════════════════ */
+  
+  --z-sidebar: 40;
+  --z-header: 30;
+  --z-dropdown: 50;
+  --z-modal-backdrop: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+
+  /* ═══════════════════════════════════════════════════════
+     LEGACY ALIASES
+     Existing markup uses the short names below. They are mapped
+     onto the EcoTrace palette so every legacy class adopts the
+     real app theme without touching each component.
+     ══════════════════════════════════════════════════════ */
+
+  --bg: var(--canvas);
+  --surface: var(--field);
+  --surface-muted: var(--canvas);
+
+  --accent: var(--forest);
+  --accent-dark: var(--canopy);
+  --accent-soft: rgba(181, 234, 135, 0.22);
+
+  --danger: var(--error);
+  --danger-soft: rgba(199, 69, 69, 0.12);
+  --warning: #b26a00;
+  --warning-soft: rgba(255, 152, 0, 0.14);
+  --info: #0d6e4f;
+  --info-soft: rgba(13, 110, 79, 0.1);
+
+  --text-faint: var(--text-hint);
+
+  --radius: var(--radius-sm);
+  --shadow: var(--shadow-card);
+}

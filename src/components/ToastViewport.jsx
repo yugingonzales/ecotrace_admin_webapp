@@ -55,7 +55,7 @@ export default function ToastViewport() {
           key={t.id}
           className="pointer-events-auto flex items-start gap-2 px-3.5 py-2.5 rounded-lg text-xs shadow-lg"
           style={{
-            background: '#fff',
+            background: 'var(--field)',
             border: `1px solid ${t.type === 'error' ? 'rgba(220,58,58,0.35)' : 'rgba(47,158,110,0.35)'}`,
             color: 'var(--text)',
             maxWidth: 360,

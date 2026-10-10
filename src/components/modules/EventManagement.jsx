@@ -360,7 +360,7 @@ function CreateEventForm({ onClose }) {
                       aria-pressed={on}
                       style={{
                         borderColor: on ? 'var(--accent)' : 'var(--border)',
-                        background: on ? 'var(--accent-soft)' : '#fff',
+                        background: on ? 'var(--accent-soft)' : 'var(--field)',
                         color: on ? 'var(--accent-dark)' : 'var(--text-muted)',
                       }}
                     >

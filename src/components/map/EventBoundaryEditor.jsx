@@ -305,15 +305,15 @@ export default function EventBoundaryEditor({
         <Polygon
           positions={boundary}
           pathOptions={{
-            color: '#1f7a54', weight: 2.5, opacity: 0.9,
-            fillColor: '#2f9e6e', fillOpacity: 0.18,
+            color: '#0d382c', weight: 2.5, opacity: 0.9,
+            fillColor: '#0d6e4f', fillOpacity: 0.18,
           }}
         />
       )}
       {!closed && boundary.length >= 2 && (
         <Polyline
           positions={boundary}
-          pathOptions={{ color: '#2f6fb6', weight: 2.5, dashArray: '5 6', opacity: 0.8 }}
+          pathOptions={{ color: '#0d6e4f', weight: 2.5, dashArray: '5 6', opacity: 0.8 }}
         />
       )}
 

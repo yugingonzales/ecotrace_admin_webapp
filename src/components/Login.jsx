@@ -99,18 +99,33 @@ return (
       position: 'relative',
       overflow: 'auto',
     }}>
-      {/* Dark overlay for readability */}
+      {/* Forest wash — the same deep-forest source colour as the app chrome,
+          so the entrance screen already belongs to the product. */}
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: 'linear-gradient(135deg, rgba(15,23,42,0.72) 0%, rgba(15,23,42,0.55) 50%, rgba(47,158,110,0.25) 100%)',
+        background: 'linear-gradient(135deg, rgba(11,31,23,0.86) 0%, rgba(10,42,32,0.72) 52%, rgba(13,110,79,0.55) 100%)',
         zIndex: 0,
       }} />
       <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
-      <div className="card w-full" style={{ maxWidth: 420, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+      {/* Solid SurfaceCard, not a glass pane: the deep-forest backdrop is
+          deliberately opaque behind it, so a translucent card bought nothing
+          but the generic blur. The leaf strip along the top edge is the one
+          brand flourish, matching the canopy/leaf pairing used app-wide. */}
+      <div
+        className="card w-full"
+        style={{
+          maxWidth: 420,
+          background: 'var(--field)',
+          borderRadius: 'var(--radius-lg)',
+          borderTop: '4px solid var(--leaf)',
+          overflow: 'hidden',
+          boxShadow: 'var(--shadow-canopy), 0 24px 60px rgba(5, 41, 29, 0.35)',
+        }}
+      >
         {/* Brand header */}
         <div className="card-header flex items-center gap-3">
-          <div className="flex items-center justify-center rounded-lg overflow-hidden flex-shrink-0" style={{ width: 40, height: 40, background: '#fff', border: '1px solid var(--border)' }}>
+          <div className="flex items-center justify-center rounded-lg overflow-hidden flex-shrink-0" style={{ width: 40, height: 40, background: 'var(--field)', border: '1px solid var(--border)' }}>
             <img src={uepLogo} alt="UEP Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 2 }} />
           </div>
           <div>

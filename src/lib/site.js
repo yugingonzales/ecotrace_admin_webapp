@@ -22,9 +22,9 @@
 
 /** @type {ZoneInfo[]} */
 export const ZONES = [
-  { name: 'Zone I', lat: 12.5096, lng: 124.6674, elev: 6.7, color: '#2f9e6e' },
-  { name: 'Zone II', lat: 12.5131, lng: 124.6613, elev: 6.3, color: '#2f6fb6' },
-  { name: 'Zone III', lat: 12.5103, lng: 124.6609, elev: 8.3, color: '#d9902b' },
+  { name: 'Zone I', lat: 12.5096, lng: 124.6674, elev: 6.7, color: '#0d6e4f' },
+  { name: 'Zone II', lat: 12.5131, lng: 124.6613, elev: 6.3, color: '#8eb3a0' },
+  { name: 'Zone III', lat: 12.5103, lng: 124.6609, elev: 8.3, color: '#ffd600' },
 ]
 
 /** @type {[number, number]} */
