@@ -32,6 +32,8 @@
 /** @typedef {import('./types.js').EcoEvent} EcoEvent */
 /** @typedef {import('./types.js').EventInput} EventInput */
 /** @typedef {import('./types.js').EventProgressView} EventProgressView */
+/** @typedef {import('./types.js').EcoAlert} EcoAlert */
+
 /** @typedef {import('./types.js').OverviewStats} OverviewStats */
 /** @typedef {import('./types.js').Paginated<any>} Paginated */
 /** @typedef {import('./types.js').Tree} Tree */
@@ -413,6 +415,17 @@ export function updateEvent(eventId, input) {
   return /** @type {Promise<EcoEvent>} */ (
     request(`/events/${eventId}`, { method: 'PATCH', body: input })
   )
+}
+
+
+/** `GET /api/alerts` — published mobile alerts. */
+export function listAlerts() {
+  return /** @type {Promise<import('./types.js').Paginated<EcoAlert>>} */ (request('/alerts'))
+}
+
+/** `POST /api/alerts` — publish an admin-authored mobile alert. */
+export function createAlert(input) {
+  return /** @type {Promise<EcoAlert>} */ (request('/alerts', { method: 'POST', body: input }))
 }
 
 /**

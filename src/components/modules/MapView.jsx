@@ -29,6 +29,36 @@ const statusConfig = {
 }
 
 /**
+ * Glyph colour for a status pin, picked by the pin's own luminance rather than
+ * hardcoded per status: a white glyph disappears on the yellow "pending" pin,
+ * and a dark glyph is muddy on the three dark ones. `#1f2d28` instead of using
+ * the darker `stroke` variant, which is too close in value to `.unverified`'s
+ * `#8eb3a0` fill to read.
+ * @param {string} hex `#rrggbb`
+ */
+const glyphColor = hex => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#1f2d28' : '#ffffff'
+}
+
+/**
+ * A conifer silhouette — canopy wedges over a trunk — as a data-URI SVG, so a
+ * tree pin needs no extra network request, icon asset, or CSS import. The
+ * returned markup is injected into an `html` string below, so every `"` and
+ * `#` has to be percent-encoded for the attribute to survive parsing.
+ * @param {number} size Rendered box, in px.
+ * @param {string} fill Glyph colour.
+ */
+const treeGlyph = (size, fill) =>
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" aria-hidden="true">` +
+      `<path d="M12 2.6 6.2 11h11L12 2.6Z"/>` +
+      `<path d="M12 7.4 4.6 17.4h14.8L12 7.4Z"/>` +
+      `<rect x="10.8" y="16.6" width="2.4" height="4.8" rx="1"/>` +
+      `</svg>`,
+  )
+
+/**
  * @param {string} color
  * @param {string} stroke
  * @param {boolean} incident
@@ -39,12 +69,13 @@ const makeIcon = (color, stroke, incident, active) => {
   return L.divIcon({
     className: 'ecotrace-pin',
     html: `<div style="
+      position:relative;
       width:${size}px;height:${size}px;border-radius:50%;
       background:${color};border:2px solid ${active ? '#ffffff' : stroke};
       display:flex;align-items:center;justify-content:center;
-      box-shadow:0 1px 5px rgba(0,0,0,0.35);cursor:pointer;
-      font:700 ${Math.round(size * 0.5)}px/1 'Segoe UI',system-ui,-apple-system,sans-serif;color:#ffffff;">
-      ${incident ? '!' : ''}
+      box-shadow:0 1px 5px rgba(0,0,0,0.35);cursor:pointer;">
+      <img src="data:image/svg+xml;utf8,${treeGlyph(size, glyphColor(color))}" width="${Math.round(size * 0.6)}" height="${Math.round(size * 0.6)}" alt="" style="display:block;" />
+      ${incident ? `<span style="position:absolute;top:-5px;right:-5px;width:13px;height:13px;border-radius:50%;background:#c74545;border:1px solid #fff;color:#fff;font:700 9px/1 'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;">!</span>` : ''}
     </div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],

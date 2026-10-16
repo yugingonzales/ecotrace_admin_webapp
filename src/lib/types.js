@@ -302,6 +302,20 @@
  */
 
 /**
+ * `ecotrace_alerts` — admin-authored mobile alert.
+ * @typedef {object} EcoAlert
+ * @property {number} alert_id
+ * @property {number | null} event_id
+ * @property {string | null} event_title
+ * @property {string} alert_title
+ * @property {string} alert_body
+ * @property {string} alert_label
+ * @property {'info' | 'success' | 'warning' | 'error'} alert_type
+ * @property {'draft' | 'published' | 'archived'} alert_status
+ * @property {string | null} published_at
+ */
+
+/**
  * `ecotrace_verification_photos` — PK `photo_id`, FK `verification_id`.
  * @typedef {object} VerificationPhoto
  * @property {number} photo_id
