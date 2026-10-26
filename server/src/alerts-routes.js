@@ -64,10 +64,32 @@ async function selectAlertRows(alertId) {
   }
 }
 
-router.get("/", async (_req, res, next) => {
+router.get("/", authenticate, async (req, res, next) => {
   try {
-    const items = await selectAlertRows()
+    const [items] = await pool.query(
+      `SELECT ${fields}, ar.read_at IS NOT NULL AS read
+       FROM ecotrace_alert_recipients AS ar
+       JOIN ecotrace_alerts AS a ON a.alert_id = ar.alert_id
+       LEFT JOIN ecotrace_events AS e ON e.event_id = a.event_id
+       WHERE ar.user_id = ? AND a.alert_status = 'published'
+       ORDER BY a.published_at DESC, a.alert_id DESC`,
+      [req.user.id],
+    )
     res.json({ items, total: items.length, page: 1, pageSize: items.length })
+  } catch (error) { next(error) }
+})
+
+router.patch("/:id/read", authenticate, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id < 1)
+      return res.status(400).json({ error: "invalid_request", message: "Invalid alert id." })
+    const [result] = await pool.execute(
+      `UPDATE ecotrace_alert_recipients SET read_at = CURRENT_TIMESTAMP WHERE alert_id = ? AND user_id = ?`,
+      [id, req.user.id],
+    )
+    if (!result.affectedRows) return res.status(404).json({ error: "not_found", message: "Alert not found." })
+    res.status(204).send()
   } catch (error) { next(error) }
 })
 
@@ -75,15 +97,35 @@ router.post("/", authenticate, requireRoles("admin"), async (req, res, next) => 
   try {
     const value = input.parse(req.body)
     const status = value.alert_status ?? "published"
-    const [result] = await pool.execute(
+    if (status === "published" && value.event_id == null)
+      return res.status(400).json({ error: "invalid_request", message: "Published alerts must target an event." })
+    const connection = await pool.getConnection()
+    try {
+      await connection.beginTransaction()
+    const [result] = await connection.execute(
       `INSERT INTO ecotrace_alerts
        (event_id, alert_title, alert_body, alert_label, alert_type, alert_status, published_at, created_by)
        VALUES (?, ?, ?, ?, ?, ?, IF(? = 'published', CURRENT_TIMESTAMP, NULL), ?)` ,
       [value.event_id ?? null, value.alert_title, value.alert_body, value.alert_label ?? "INFO", value.alert_type ?? "info", status, status, req.user.id],
     )
+    if (status === "published") {
+      await connection.execute(
+        `INSERT IGNORE INTO ecotrace_alert_recipients (alert_id, user_id)
+         SELECT ?, user_id FROM ecotrace_event_participation
+         WHERE event_id = ? AND participation_status = 'joined'`,
+        [result.insertId, value.event_id],
+      )
+    }
+    await connection.commit()
     const [rows] = await pool.query(`SELECT ${fields} FROM ecotrace_alerts AS a
        LEFT JOIN ecotrace_events AS e ON e.event_id = a.event_id WHERE a.alert_id = ?`, [result.insertId])
     res.status(201).json(rows[0])
+    } catch (error) {
+      await connection.rollback().catch(() => {})
+      throw error
+    } finally {
+      connection.release()
+    }
   } catch (error) { next(error) }
 })
 

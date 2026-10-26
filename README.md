@@ -102,8 +102,9 @@ role server-side, so it cannot be used to create an administrator account.
 
 ## Using the real API
 
-The API serves `GET /api/plants` and related routes, along with authentication
-routes described above. To point the UI at it:
+The API serves event, alert, plant, and authentication routes. Event listing is
+public for the mobile schedule; participation is authenticated. To point the UI
+at it:
 
 1. Start the API on :3000 (above).
 2. Set `VITE_ENABLE_API=true` in `.env.local` and restart `npm run dev`.
@@ -161,12 +162,38 @@ Individual commands:
 | `npm run dev` | Vite dev server on :8443 |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the built `dist/` |
-| `npm test` | Vitest, 58 tests |
+| `npm test` | Vitest suite (current count is recorded by the test runner) |
 | `npm run test:watch` | Vitest in watch mode |
 | `npm run format` | oxfmt |
 | `npm run verify` | **The gate** — `test` then `build` |
 
-The API has its own suite: `cd server && npm test` (13 tests).
+The API has its own suite: `cd server && npm test`. Apply database migrations
+before live API verification with `cd server && npm run migrate`. The local
+MariaDB/API participation smoke test was verified on 2026-10-18: migration
+`011_participation.sql` was already applied, authenticated join/leave and joined
+events worked, attendee counts were handled correctly, and joining produced an
+event-linked published alert. The API test command currently discovers zero test
+files, so this runtime smoke test is the available participation evidence.
+
+### Event participation and alerts
+
+The mobile event contract is:
+
+- `GET /api/events` (the mobile app requests `?status=active`) lists events.
+- `GET /api/events/joined` requires `Authorization: Bearer <JWT>` and returns the
+  current user's joined events.
+- `POST /api/events/:id/join` requires authentication, records participation,
+  increments `attendee_count`, and creates an event-linked alert.
+- `DELETE /api/events/:id/join` requires authentication, marks participation as
+  `cancelled`, and decrements `attendee_count` without going below zero.
+- `GET /api/alerts` returns published alerts; event context is included when
+  available. The Flutter client also sends the bearer token on this request.
+
+Migration `server/migrations/011_participation.sql` creates
+`ecotrace_event_participation`, with a unique `(event_id, user_id)` key,
+`joined`/`cancelled` status, timestamps, and foreign keys to events and users.
+Apply it before exercising the participation routes. The joined-event response
+currently reports `verified_trees: 0` until verification aggregation is added.
 
 ### On types
 
@@ -218,4 +245,4 @@ README is the entry point for running the project.
 
 ---
 
-**Last Updated:** 2026-10-09
+**Last Updated:** 2026-10-16

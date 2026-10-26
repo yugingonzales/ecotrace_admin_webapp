@@ -18,6 +18,13 @@ const eventInput = z
 
     event_zone: z.string().trim().max(160).nullable().optional(),
 
+    event_boundary: z.array(
+      z.tuple([
+        z.coerce.number().min(-90).max(90),
+        z.coerce.number().min(-180).max(180),
+      ]),
+    ).max(30).nullable().optional(),
+
     start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 
     end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -31,6 +38,8 @@ const eventInput = z
     event_status: z
       .enum(["draft", "active", "completed", "cancelled"])
       .optional(),
+
+    monitoring_metrics: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
   })
   .superRefine((value, context) => {
     if (value.end_date < value.start_date)
@@ -42,10 +51,11 @@ const eventInput = z
   })
 
 const fields = `event_id, event_title, event_description, event_location, event_zone,
+  event_boundary,
   DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
   DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date,
-  trees_per_student, target_year_batch, attendee_count, event_status, created_by,
-  created_at, updated_at`
+  trees_per_student, target_year_batch, attendee_count, event_status,
+  monitoring_metrics, created_by, created_at, updated_at`
 
 router.get("/", async (req, res, next) => {
   try {
@@ -78,9 +88,11 @@ router.get("/", async (req, res, next) => {
 })
 
 const joinedFields = `e.event_id, e.event_title, e.event_description, e.event_location, e.event_zone,
+  e.event_boundary,
   DATE_FORMAT(e.start_date, '%Y-%m-%d') AS start_date,
   DATE_FORMAT(e.end_date, '%Y-%m-%d') AS end_date,
   e.trees_per_student, e.target_year_batch, e.attendee_count, e.event_status,
+  e.monitoring_metrics,
   p.participation_status, p.joined_at,
   0 AS verified_trees`
 
@@ -180,15 +192,16 @@ router.post(
 
       const [result] = await pool.execute(
         `INSERT INTO ecotrace_events
-       (event_title, event_description, event_location, event_zone, start_date, end_date,
-        trees_per_student, target_year_batch, attendee_count, event_status, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (event_title, event_description, event_location, event_zone, event_boundary, start_date, end_date,
+        trees_per_student, target_year_batch, attendee_count, event_status, monitoring_metrics, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 
         [
           input.event_title,
           input.event_description ?? null,
           input.event_location ?? null,
           input.event_zone ?? null,
+          input.event_boundary == null ? null : JSON.stringify(input.event_boundary),
 
           input.start_date,
           input.end_date,
@@ -197,6 +210,10 @@ router.post(
 
           input.attendee_count ?? 0,
           input.event_status ?? "draft",
+          JSON.stringify(input.monitoring_metrics ?? [
+            "GPS Coordinates", "Status Photo", "Tree Height (cm)",
+            "Growth Stage", "Diameter Measurement (cm)", "Survival Status",
+          ]),
           req.user.id,
         ],
       )
@@ -213,48 +230,110 @@ router.post(
   },
 )
 
-router.patch(
+router.delete(
   "/:id",
   authenticate,
   requireRoles("admin"),
   async (req, res, next) => {
     try {
       const id = Number(req.params.id)
-
       if (!Number.isInteger(id) || id < 1)
-        return res
-          .status(400)
-          .json({ error: "invalid_request", message: "Invalid event id." })
+        return res.status(400).json({ error: "invalid_request", message: "Invalid event id." })
+      const [result] = await pool.execute("DELETE FROM ecotrace_events WHERE event_id = ?", [id])
+      if (!result.affectedRows)
+        return res.status(404).json({ error: "not_found", message: "Event not found." })
+      res.status(204).send()
+    } catch (error) { next(error) }
+  },
+)
+
+router.patch(
+  "/:id",
+  authenticate,
+  requireRoles("admin"),
+  async (req, res, next) => {
+    let connection
+    try {
+      const id = Number(req.params.id)
+      if (!Number.isInteger(id) || id < 1)
+        return res.status(400).json({ error: "invalid_request", message: "Invalid event id." })
 
       const input = eventInput.partial().parse(req.body)
-
       const entries = Object.entries(input)
+      if (!entries.length)
+        return res.status(400).json({ error: "invalid_request", message: "At least one field is required." })
 
-      if (!entries.length) return res.status(400).json({
-          error: "invalid_request",
-          message: "At least one field is required.",
-        })
+      connection = await pool.getConnection()
+      await connection.beginTransaction()
 
-      const assignments = entries.map(([key]) => `${key} = ?`).join(", ")
-
-      const [result] = await pool.execute(
-        `UPDATE ecotrace_events SET ${assignments} WHERE event_id = ?`,
-        [...entries.map(([, value]) => value), id],
-      )
-
-      if (!result.affectedRows)
-        return res
-          .status(404)
-          .json({ error: "not_found", message: "Event not found." })
-
-      const [rows] = await pool.query(
-        `SELECT ${fields} FROM ecotrace_events WHERE event_id = ?`,
+      const [beforeRows] = await connection.query(
+        `SELECT event_title, start_date, end_date, event_location, event_zone,
+                trees_per_student, monitoring_metrics, event_boundary
+         FROM ecotrace_events WHERE event_id = ? FOR UPDATE`,
         [id],
       )
+      if (!beforeRows.length) {
+        await connection.rollback()
+        return res.status(404).json({ error: "not_found", message: "Event not found." })
+      }
+      const before = beforeRows[0]
 
-      res.json(rows[0])
+      const assignments = entries.map(([key]) => `${key} = ?`).join(", ")
+      const values = entries.map(([key, value]) =>
+        key === "monitoring_metrics" || key === "event_boundary"
+          ? (value == null ? null : JSON.stringify(value))
+          : value,
+      )
+      const changed = entries.some(([key, value]) => {
+        const old = before[key]
+        if (key === "monitoring_metrics" || key === "event_boundary")
+          return JSON.stringify(value ?? null) !== JSON.stringify(old ?? null)
+        return String(value ?? "") !== String(old ?? "")
+      })
+
+      if (changed) {
+        await connection.execute(
+          `UPDATE ecotrace_events SET ${assignments} WHERE event_id = ?`,
+          [...values, id],
+        )
+      }
+
+      const [rows] = await connection.query(`SELECT ${fields} FROM ecotrace_events WHERE event_id = ?`, [id])
+      const updated = rows[0]
+      const changes = []
+      if (input.trees_per_student !== undefined && Number(input.trees_per_student) !== Number(before.trees_per_student))
+        changes.push(`quota reassigned to ${input.trees_per_student} trees per staff member`)
+      if (input.event_location !== undefined || input.event_zone !== undefined)
+        changes.push(`target location changed to ${input.event_zone ?? input.event_location ?? "the updated location"}`)
+      if (input.event_boundary !== undefined && JSON.stringify(input.event_boundary) !== JSON.stringify(before.event_boundary))
+        changes.push(input.event_boundary?.length ? "geofencing boundary updated" : "geofencing boundary removed")
+      if (input.monitoring_metrics !== undefined) changes.push("verification metrics updated")
+      if (input.start_date !== undefined || input.end_date !== undefined)
+        changes.push(`event dates updated to ${updated.start_date} through ${updated.end_date}`)
+      if (input.event_title !== undefined) changes.push("event details modified")
+
+      if (changes.length) {
+        const [alertResult] = await connection.execute(
+          `INSERT INTO ecotrace_alerts
+             (event_id, alert_title, alert_body, alert_label, alert_type, alert_status, published_at, created_by)
+           VALUES (?, ?, ?, 'EVENT UPDATE', 'info', 'published', CURRENT_TIMESTAMP, ?)`,
+          [id, `${updated.event_title} was updated`, `Event update: ${changes.join("; ")}.`, req.user.id],
+        )
+        await connection.execute(
+          `INSERT IGNORE INTO ecotrace_alert_recipients (alert_id, user_id)
+           SELECT ?, user_id FROM ecotrace_event_participation
+           WHERE event_id = ? AND participation_status = 'joined'`,
+          [alertResult.insertId, id],
+        )
+      }
+
+      await connection.commit()
+      res.json(updated)
     } catch (error) {
+      if (connection) await connection.rollback().catch(() => {})
       next(error)
+    } finally {
+      connection?.release()
     }
   },
 )

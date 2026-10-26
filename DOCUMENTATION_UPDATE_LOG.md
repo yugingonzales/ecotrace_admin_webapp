@@ -1,4 +1,4 @@
-# Documentation Update Summary - 2026-10-09 / 2026-10-11
+# Documentation Update Summary - 2026-10-09 / 2026-10-11 / 2026-10-16
 
 ## Overview
 
@@ -141,4 +141,21 @@ The navigation rail is now drag-resizable in the browser.
 
 ---
 
-**Updates Completed:** 2026-10-09 (documentation pass) | 2026-10-11 (software-change entry)
+## 2026-10-16 Update — Event Participation and Alerts Documentation
+
+- Documented `011_participation.sql`, the authenticated event participation routes,
+  attendee-count behavior, and the event-linked alert created on join.
+- Documented that Flutter sends the stored JWT as a Bearer token for joined events,
+  join/leave mutations, and the published alert feed.
+- Corrected the README verification guidance so migration application is explicit.
+- Live verification completed on 2026-10-18 against the local MariaDB/API: migration
+  `011_participation.sql` was already applied; authenticated login, joined-event
+  loading, idempotent join, attendee-count handling, event-linked alert creation,
+  and leave cleanup all succeeded.
+- The admin UI/API source checks are complete. The API suite currently discovers
+  zero test files (`npm test`: 0 tests, 0 failures); the live smoke result above
+  is the current runtime evidence.
+
+---
+
+**Updates Completed:** 2026-10-09 (documentation pass) | 2026-10-11 (software-change entry) | 2026-10-16 (participation/alerts documentation)

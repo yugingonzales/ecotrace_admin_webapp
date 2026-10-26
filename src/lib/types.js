@@ -141,11 +141,15 @@
  * @property {number} event_id
  * @property {string} event_title
  * @property {string | null} event_description
+ * @property {string | null} event_location
+ * @property {string | null} event_zone
+ * @property {Array<[number, number]> | null} event_boundary
  * @property {string} start_date `DATE` as `YYYY-MM-DD`.
  * @property {string} end_date
  * @property {number} trees_per_student
  * @property {string} target_year_batch Year batch this event targets, e.g. `'2026'`.
  * @property {EventStatus} event_status
+ * @property {string[]} monitoring_metrics
  * @property {number | null} created_by
  * @property {string} created_at
  * @property {string} updated_at
@@ -156,10 +160,14 @@
  * @typedef {object} EventInput
  * @property {string} event_title
  * @property {string | null} [event_description]
+ * @property {string | null} [event_location]
+ * @property {string | null} [event_zone]
+ * @property {Array<[number, number]> | null} [event_boundary]
  * @property {string} start_date
  * @property {string} end_date
  * @property {number} trees_per_student
  * @property {string} target_year_batch
+ * @property {string[]} [monitoring_metrics]
  */
 
 

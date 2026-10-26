@@ -101,7 +101,7 @@ export function plantToMarker(p) {
 
 /** @returns {UsePlantsResult} */
 export function usePlants() {
-  // Baseline is the initial value, so the first paint already has all 23 trees.
+  // Baseline is the initial value, so the first paint already has all five test trees.
   // The generic is pinned by casting the `useState` argument. A `@type` comment
   // on the destructuring line would annotate the whole [value, setter] tuple and
   // destroy the setters, so it must not go there.

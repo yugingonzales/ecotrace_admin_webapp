@@ -417,6 +417,10 @@ export function updateEvent(eventId, input) {
   )
 }
 
+/** `DELETE /api/events/:id`. */
+export function deleteEvent(eventId) {
+  return request(`/events/${eventId}`, { method: 'DELETE' })
+}
 
 /** `GET /api/alerts` — published mobile alerts. */
 export function listAlerts() {

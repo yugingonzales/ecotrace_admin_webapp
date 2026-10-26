@@ -1,4 +1,3 @@
-import * as L from 'leaflet'
 import { useState } from 'react'
 import {
   MapContainer, TileLayer, Marker, Popup, LayersControl, useMapEvents,
@@ -6,82 +5,13 @@ import {
 import 'leaflet/dist/leaflet.css'
 import { ZONES, MAP_CENTER, CAMPUS_BOUNDS, ZONE_LABEL_TO_NAME } from '../../lib/site'
 import { usePlants } from '../../lib/usePlants'
+import { makeTreeIcon, treeStatusConfig } from '../../lib/trees'
 import { usePortal } from '../../lib/store'
 import MapAutoResize from '../map/MapAutoResize'
 
 /** @typedef {import('../../lib/site.js').ZoneName} ZoneName */
 /** @typedef {import('../../lib/trees.js').TreeMarker} TreeMarker */
 /** @typedef {import('../../lib/trees.js').StatusKey} StatusKey */
-
-/**
- * @typedef {object} StatusStyle
- * @property {string} color
- * @property {string} label
- * @property {string} stroke
- */
-
-/** @type {Record<StatusKey, StatusStyle>} */
-const statusConfig = {
-  verified: { color: '#0d6e4f', label: 'Verified & Healthy', stroke: '#0d382c' },
-  pending: { color: '#ffd600', label: 'Pending Verification', stroke: '#b26a00' },
-  incident: { color: '#c74545', label: 'Incident / Declined', stroke: '#9c2f2f' },
-  unverified: { color: '#8eb3a0', label: 'Unverified / Missing', stroke: '#6b8277' },
-}
-
-/**
- * Glyph colour for a status pin, picked by the pin's own luminance rather than
- * hardcoded per status: a white glyph disappears on the yellow "pending" pin,
- * and a dark glyph is muddy on the three dark ones. `#1f2d28` instead of using
- * the darker `stroke` variant, which is too close in value to `.unverified`'s
- * `#8eb3a0` fill to read.
- * @param {string} hex `#rrggbb`
- */
-const glyphColor = hex => {
-  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#1f2d28' : '#ffffff'
-}
-
-/**
- * A conifer silhouette — canopy wedges over a trunk — as a data-URI SVG, so a
- * tree pin needs no extra network request, icon asset, or CSS import. The
- * returned markup is injected into an `html` string below, so every `"` and
- * `#` has to be percent-encoded for the attribute to survive parsing.
- * @param {number} size Rendered box, in px.
- * @param {string} fill Glyph colour.
- */
-const treeGlyph = (size, fill) =>
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" aria-hidden="true">` +
-      `<path d="M12 2.6 6.2 11h11L12 2.6Z"/>` +
-      `<path d="M12 7.4 4.6 17.4h14.8L12 7.4Z"/>` +
-      `<rect x="10.8" y="16.6" width="2.4" height="4.8" rx="1"/>` +
-      `</svg>`,
-  )
-
-/**
- * @param {string} color
- * @param {string} stroke
- * @param {boolean} incident
- * @param {boolean} active
- */
-const makeIcon = (color, stroke, incident, active) => {
-  const size = active ? 26 : 20
-  return L.divIcon({
-    className: 'ecotrace-pin',
-    html: `<div style="
-      position:relative;
-      width:${size}px;height:${size}px;border-radius:50%;
-      background:${color};border:2px solid ${active ? '#ffffff' : stroke};
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 1px 5px rgba(0,0,0,0.35);cursor:pointer;">
-      <img src="data:image/svg+xml;utf8,${treeGlyph(size, glyphColor(color))}" width="${Math.round(size * 0.6)}" height="${Math.round(size * 0.6)}" alt="" style="display:block;" />
-      ${incident ? `<span style="position:absolute;top:-5px;right:-5px;width:13px;height:13px;border-radius:50%;background:#c74545;border:1px solid #fff;color:#fff;font:700 9px/1 'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;">!</span>` : ''}
-    </div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -size / 2 - 6],
-  })
-}
 
 /**
  * Map-level click handler: clicking empty map space clears the active marker.
@@ -100,7 +30,7 @@ export default function MapView() {
   const [eventFilter, setEventFilter] = useState('all')
 
   // Served from the API when VITE_ENABLE_API is on, otherwise from the local
-  // fixture. Either way `markers` is never empty — see usePlants for why.
+  // fixture. Either way `markers` is never empty â€” see usePlants for why.
   const { markers, stale, error, refresh } = usePlants()
 
   /**
@@ -151,7 +81,7 @@ export default function MapView() {
         <div>
           <h1 className="text-xl font-semibold mb-1">Map View</h1>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            UEP Catarman · {markers.length} trees across Zones I–III
+            UEP Catarman Â· {markers.length} trees across Zones Iâ€“III
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -178,7 +108,7 @@ export default function MapView() {
           >
             <option value="all">All Zones</option>
             {ZONES.map(z => (
-              <option key={z.name} value={z.name}>{z.name} — {z.elev} m</option>
+              <option key={z.name} value={z.name}>{z.name} â€” {z.elev} m</option>
             ))}
           </select>
         </div>
@@ -195,7 +125,7 @@ export default function MapView() {
             >
               <span>
                 Showing the local tree fixture
-                {error ? ` — ${error}` : ' — the EcoTrace API is disabled.'}
+                {error ? ` â€” ${error}` : ' â€” the EcoTrace API is disabled.'}
               </span>
               <button type="button" onClick={refresh} className="underline font-semibold">
                 Retry
@@ -230,14 +160,14 @@ export default function MapView() {
 
             {/* Tree markers */}
             {visibleMarkers.map(m => {
-              const cfg = statusConfig[m.status]
+              const cfg = treeStatusConfig[m.status] ?? treeStatusConfig.unverified
               const isActive = activeMarker?.id === m.id
               const inEvent = eventTreeTags?.has(m.treeTag) ?? false
               return (
                 <Marker
                   key={m.id}
                   position={[m.lat, m.lng]}
-                  icon={makeIcon(cfg.color, cfg.stroke, m.status === 'incident', isActive || inEvent)}
+                  icon={makeTreeIcon(m.status, isActive || inEvent)}
                   eventHandlers={{ click: () => setActiveMarker(m) }}
                 >
                   <Popup minWidth={180}>
@@ -248,12 +178,12 @@ export default function MapView() {
                           {cfg.label.split(' ')[0]}
                         </span>
                       </div>
-                      <div style={{ color: 'var(--text-muted)' }}>{m.zone} · {m.species}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>{m.zone} Â· {m.species}</div>
                       <div style={{ color: 'var(--text-muted)' }}>
-                        {m.staffName} · planted {m.datePlanted}
+                        {m.staffName} Â· planted {m.datePlanted}
                       </div>
                       <div className="mono" style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                        {m.lat.toFixed(4)}°N, {m.lng.toFixed(4)}°E
+                        {m.lat.toFixed(4)}Â°N, {m.lng.toFixed(4)}Â°E
                       </div>
                     </div>
                   </Popup>
@@ -268,18 +198,18 @@ export default function MapView() {
             style={{ zIndex: 500, boxShadow: '0 4px 12px rgba(16,24,40,0.1)' }}
           >
             <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-              {/** @type {StatusKey[]} */ (Object.keys(statusConfig)).map(key => (
+              {/** @type {StatusKey[]} */ (Object.keys(treeStatusConfig)).map(key => (
                 <button
                   key={key}
                   onClick={() => { setActiveLayer(activeLayer === key ? 'all' : key); setActiveMarker(null) }}
                   className="flex items-center gap-1.5"
                   style={{
-                    color: activeLayer === key ? statusConfig[key].color : 'var(--text-muted)',
+                    color: activeLayer === key ? treeStatusConfig[key].color : 'var(--text-muted)',
                     fontWeight: activeLayer === key ? 600 : 400,
                   }}
                 >
-                  <span className="inline-block rounded-full" style={{ width: 9, height: 9, background: statusConfig[key].color }} />
-                  {counts[key]} {statusConfig[key].label.split(' ')[0]}
+                  <span className="inline-block rounded-full" style={{ width: 9, height: 9, background: treeStatusConfig[key].color }} />
+                  {counts[key]} {treeStatusConfig[key].label.split(' ')[0]}
                 </button>
               ))}
             </div>
@@ -296,9 +226,9 @@ export default function MapView() {
                 </div>
                 <span
                   className="badge"
-                  style={{ background: `${statusConfig[activeMarker.status].color}22`, color: statusConfig[activeMarker.status].color }}
+                  style={{ background: `${treeStatusConfig[activeMarker.status].color}22`, color: treeStatusConfig[activeMarker.status].color }}
                 >
-                  {statusConfig[activeMarker.status].label.split(' ')[0]}
+                  {treeStatusConfig[activeMarker.status].label.split(' ')[0]}
                 </span>
               </div>
               <div className="text-xs space-y-2 mb-3">
@@ -317,7 +247,7 @@ export default function MapView() {
                 <div className="flex items-center justify-between">
                   <span style={{ color: 'var(--text-muted)' }}>Coordinates</span>
                   <span className="mono">
-                    {activeMarker.lat.toFixed(4)}°N, {activeMarker.lng.toFixed(4)}°E
+                    {activeMarker.lat.toFixed(4)}Â°N, {activeMarker.lng.toFixed(4)}Â°E
                   </span>
                 </div>
               </div>
@@ -373,7 +303,7 @@ export default function MapView() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between mb-1.5 text-xs" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
-                  <span className="mono">{z.lat.toFixed(4)}°N, {z.lng.toFixed(4)}°E</span>
+                  <span className="mono">{z.lat.toFixed(4)}Â°N, {z.lng.toFixed(4)}Â°E</span>
                   <span>Elev {z.elev} m</span>
                 </div>
                 <div className="progress">

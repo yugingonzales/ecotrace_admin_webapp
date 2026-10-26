@@ -9,6 +9,7 @@
 import express from "express"
 
 import cors from "cors"
+import { z } from "zod"
 
 import { fileURLToPath } from "node:url"
 
@@ -18,6 +19,7 @@ import authRoutes from "./auth-routes.js"
 
 import eventRoutes from "./events-routes.js"
 import alertRoutes from "./alerts-routes.js"
+import plantRoutes from "./plant-routes.js"
 
 const app = express()
 
@@ -47,6 +49,7 @@ app.use("/api/auth", authRoutes)
 
 app.use("/api/events", eventRoutes)
 app.use("/api/alerts", alertRoutes)
+app.use("/api/plants", plantRoutes)
 
 // ── Routes ──────────────────────────────────────────────────────────────────
 
@@ -89,7 +92,9 @@ app.use((_req, res) => {
 // server was broken, and the real cause only ever appeared in this log.
 
 app.use((error, _req, res, _next) => {
-  const status = Number(error?.status ?? error?.statusCode ?? 500) || 500
+  const status = error instanceof z.ZodError
+    ? 400
+    : Number(error?.status ?? error?.statusCode ?? 500) || 500
 
   const serverFault = status >= 500
 

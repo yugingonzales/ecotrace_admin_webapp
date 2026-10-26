@@ -16,7 +16,9 @@ import {
   API_ENABLED,
   createEvent as createApiEvent,
   createAlert as createApiAlert,
+  deleteEvent as deleteApiEvent,
   listEvents,
+  updateEvent as updateApiEvent,
 } from "../../lib/api"
 
 /** @typedef {import('../../lib/site.js').Boundary} Boundary */
@@ -61,8 +63,9 @@ const METRIC_OPTIONS = [
   "Survival Status",
 ]
 
-/** @param {{ onClose: () => void }} props */
-
+/**
+ * @param {{ onClose: () => void, onCreated: (event: object) => void }} props
+ */
 function CreateEventForm({ onClose, onCreated }) {
   const { storeActions } = usePortal()
 
@@ -105,7 +108,7 @@ function CreateEventForm({ onClose, onCreated }) {
 
       guidelines: "",
 
-      metrics: /** @type {string[]} */ ([]),
+      metrics: [...METRIC_OPTIONS],
     }),
   )
 
@@ -132,7 +135,6 @@ function CreateEventForm({ onClose, onCreated }) {
   const toggleAllMetrics = () => {
     setForm((f) => ({
       ...f,
-
       metrics: allMetricsSelected ? [] : [...METRIC_OPTIONS],
     }))
   }
@@ -232,6 +234,8 @@ function CreateEventForm({ onClose, onCreated }) {
 
         event_zone: draft.zone || null,
 
+        event_boundary: draft.boundary,
+
         start_date: draft.start,
 
         end_date: draft.end,
@@ -241,6 +245,7 @@ function CreateEventForm({ onClose, onCreated }) {
         target_year_batch: draft.start.slice(0, 4),
 
         event_status: publish ? "active" : "draft",
+        monitoring_metrics: draft.metrics,
       })
         .then(onCreated)
         .catch((error) => setError(error.message))
@@ -651,6 +656,18 @@ function apiEventToPortalEvent(event) {
 
   const end = new Date(`${event.end_date}T00:00:00`)
 
+  const rawBoundary = event.event_boundary
+  let boundary = []
+  if (Array.isArray(rawBoundary)) boundary = rawBoundary
+  else if (typeof rawBoundary === "string" && rawBoundary.trim()) {
+    try {
+      const parsed = JSON.parse(rawBoundary)
+      if (Array.isArray(parsed)) boundary = parsed
+    } catch {
+      boundary = []
+    }
+  }
+
   const display = (value) =>
     value.toLocaleDateString(undefined, {
       month: "short",
@@ -684,9 +701,65 @@ function apiEventToPortalEvent(event) {
 
     description: event.event_description || "",
     guidelines: "",
-    metrics: [],
-    boundary: [],
+    metrics:
+      Array.isArray(event.monitoring_metrics) && event.monitoring_metrics.length
+        ? event.monitoring_metrics
+        : [...METRIC_OPTIONS],
+    boundary,
   }
+}
+
+function EditEventForm({ event, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    title: event.name,
+    start: event.startIso,
+    end: event.endIso,
+    location: event.zone,
+    quota: String(event.quota),
+    metrics: [...event.metrics],
+    boundary: event.boundary ?? [],
+  })
+  const [expanded, setExpanded] = useState(false)
+  const [error, setError] = useState(null)
+  const toggleMetric = (metric) => setForm((current) => ({
+    ...current,
+    metrics: current.metrics.includes(metric)
+      ? current.metrics.filter((item) => item !== metric)
+      : [...current.metrics, metric],
+  }))
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!API_ENABLED) { setError("Enable the API to modify persisted events."); return }
+    try {
+      const updated = await updateApiEvent(Number(event.id.replace(/^E/, "")), {
+        event_title: form.title.trim(),
+        start_date: form.start,
+        end_date: form.end,
+        event_location: form.location.trim(),
+        event_zone: form.location.trim(),
+        trees_per_student: Number(form.quota),
+        monitoring_metrics: form.metrics,
+        event_boundary: form.boundary,
+      })
+      onSaved(updated)
+    } catch (cause) { setError(cause.message) }
+  }
+  return (
+    <div className="overlay">
+      <form className="modal" style={{ maxWidth: 760 }} onSubmit={submit}>
+        <div className="modal-header"><div><h2 className="modal-title">Edit / Modify Event</h2><p className="text-xs" style={{ color: "var(--text-muted)" }}>Changes are announced to EcoTrace users.</p></div><button type="button" onClick={onClose} className="btn btn-sm">×</button></div>
+        <div className="modal-body space-y-4">
+          {error && <div className="text-xs" style={{ color: "var(--danger)" }}>{error}</div>}
+          <div><label className="field-label">Event title *</label><input className="input" required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} /></div>
+          <div className="grid grid-cols-2 gap-4"><div><label className="field-label">Start date *</label><input className="input" type="date" required value={form.start} onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))} /></div><div><label className="field-label">End date / extension *</label><input className="input" type="date" required value={form.end} onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))} /></div></div>
+          <div className="grid grid-cols-2 gap-4"><div><label className="field-label">Target location / zone *</label><input className="input" required value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} /></div><div><label className="field-label">Trees per staff member (reassign quota) *</label><input className="input" type="number" min="0" max="100000" required value={form.quota} onChange={(e) => setForm((f) => ({ ...f, quota: e.target.value }))} /></div></div>
+          <div><div className="flex items-center justify-between"><label className="field-label mb-2">Verification metrics</label><button type="button" className="btn btn-sm" onClick={() => setForm((f) => ({ ...f, metrics: f.metrics.length === METRIC_OPTIONS.length ? [] : [...METRIC_OPTIONS] }))}>{form.metrics.length === METRIC_OPTIONS.length ? "Clear all" : "Select all"}</button></div><div className="flex flex-wrap gap-2">{METRIC_OPTIONS.map((metric) => <button type="button" key={metric} className="btn btn-sm" aria-pressed={form.metrics.includes(metric)} onClick={() => toggleMetric(metric)} style={{ borderColor: form.metrics.includes(metric) ? "var(--accent)" : "var(--border)", background: form.metrics.includes(metric) ? "var(--accent-soft)" : "var(--field)" }}>{form.metrics.includes(metric) ? "✓ " : ""}{metric}</button>)}</div></div>
+          <div><label className="field-label">Geofencing boundary</label><EventBoundaryEditor zoneLabel={form.location} boundary={form.boundary} onChange={(boundary) => setForm((f) => ({ ...f, boundary }))} expanded={expanded} onExpand={() => setExpanded(true)} onClose={() => setExpanded(false)} /></div>
+        </div>
+        <div className="modal-footer"><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="submit" className="btn btn-primary">Save changes</button></div>
+      </form>
+    </div>
+  )
 }
 
 function CreateAlertForm({ onClose }) {
@@ -730,6 +803,7 @@ export default function EventManagement() {
 
   const [showCreate, setShowCreate] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
 
   // Held as an id so the dashboard always renders the live row: after Extend
 
@@ -742,10 +816,6 @@ export default function EventManagement() {
   const [yearFilter, setYearFilter] = useState("all")
 
   const [statusFilter, setStatusFilter] = useState("all")
-
-  const [quotaDraft, setQuotaDraft] = useState(
-    /** @type {{ id: string, value: string } | null} */ (null),
-  )
 
   const selectedEvent = selectedId
     ? (visibleData.find((e) => e.id === selectedId) ?? null)
@@ -769,6 +839,25 @@ export default function EventManagement() {
   })
 
   /** @param {PortalEvent} ev */
+
+  const editSelectedEvent = () => {
+    if (selectedEvent) setShowEdit(true)
+  }
+
+  const removeSelectedEvent = async () => {
+    if (!selectedEvent || !window.confirm(`Delete ${selectedEvent.name}? This cannot be undone.`)) return
+    try {
+      if (!API_ENABLED) {
+        window.alert("Enable the API to delete persisted events.")
+        return
+      }
+      if (API_ENABLED) {
+        await deleteApiEvent(Number(selectedEvent.id.replace(/^E/, "")))
+        setApiEvents((current) => (current ?? []).filter((item) => item.id !== selectedEvent.id))
+      }
+      setSelectedId(null)
+    } catch (error) { window.alert(error.message) }
+  }
 
   const exportLog = (ev) => {
     const n = downloadCsv(
@@ -815,6 +904,7 @@ export default function EventManagement() {
   return (
     <div>
       {showAlert && <CreateAlertForm onClose={() => setShowAlert(false)} />}
+      {showEdit && selectedEvent && <EditEventForm event={selectedEvent} onClose={() => setShowEdit(false)} onSaved={(updated) => { setApiEvents((current) => (current ?? []).map((item) => item.id === selectedEvent.id ? apiEventToPortalEvent(updated) : item)); setShowEdit(false) }} />}
 
       {showCreate && (
         <CreateEventForm
@@ -863,74 +953,8 @@ export default function EventManagement() {
               </div>
             </div>
             <div className="flex gap-2 items-start">
-              {quotaDraft && quotaDraft.id === selectedEvent.id ? (
-                <>
-                  <input
-                    className="input text-xs"
-                    style={{ width: 70 }}
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={quotaDraft.value}
-                    autoFocus
-                    aria-label="New quota per staff member"
-                    onChange={(e) =>
-                      setQuotaDraft({ ...quotaDraft, value: e.target.value })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        storeActions.reassignQuotas(
-                          selectedEvent.id,
-                          Number(quotaDraft.value),
-                        )
-
-                        setQuotaDraft(null)
-                      }
-
-                      if (e.key === "Escape") setQuotaDraft(null)
-                    }}
-                  />
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => {
-                      storeActions.reassignQuotas(
-                        selectedEvent.id,
-                        Number(quotaDraft.value),
-                      )
-
-                      setQuotaDraft(null)
-                    }}
-                  >
-                    Apply
-                  </button>
-                  <button
-                    className="btn btn-sm"
-                    onClick={() => setQuotaDraft(null)}
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  className="btn btn-sm"
-                  onClick={() =>
-                    setQuotaDraft({
-                      id: selectedEvent.id,
-                      value: String(selectedEvent.quota),
-                    })
-                  }
-                  title="Set a new trees-per-staff quota for this event"
-                >
-                  Reassign Quotas
-                </button>
-              )}
-              <button
-                className="btn btn-sm"
-                onClick={() => storeActions.extendEvent(selectedEvent.id, 7)}
-                title="Move the end date out by 7 days"
-              >
-                Extend +7 days
-              </button>
+              <button className="btn btn-sm" onClick={editSelectedEvent}>Edit / Modify</button>
+              <button className="btn btn-sm" style={{ color: "var(--danger)" }} onClick={removeSelectedEvent}>Delete</button>
               <button
                 className="btn btn-sm btn-primary"
                 onClick={() => exportLog(selectedEvent)}

@@ -6,12 +6,13 @@
 import * as L from 'leaflet'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  MapContainer, TileLayer, Polygon, Polyline,
+  MapContainer, TileLayer, Polygon, Polyline, Marker, Popup,
   LayersControl, useMap, useMapEvents,
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { CAMPUS_BOUNDS, ZONE_LABEL_TO_NAME, framingBounds, boundaryArea } from '../../lib/site'
 import MapAutoResize from './MapAutoResize'
+import { trees, makeTreeIcon, treeStatusConfig } from '../../lib/trees'
 
 /** @typedef {import('../../lib/site.js').Boundary} Boundary */
 
@@ -300,6 +301,20 @@ export default function EventBoundaryEditor({
       <MapAutoResize />
       <FitToBoundary boundary={boundary} />
       {editing && <DrawClicks onAdd={add} />}
+
+      {trees.map(tree => (
+        <Marker
+          key={tree.id}
+          position={[tree.lat, tree.lng]}
+          icon={makeTreeIcon(tree.status)}
+        >
+          <Popup>
+            <strong>{tree.treeTag}</strong><br />
+            {tree.species} · {tree.zone}<br />
+            {treeStatusConfig[tree.status]?.label ?? tree.status} · {tree.lat.toFixed(4)}, {tree.lng.toFixed(4)}
+          </Popup>
+        </Marker>
+      ))}
 
       {closed && (
         <Polygon
