@@ -20,6 +20,7 @@ import authRoutes from "./auth-routes.js"
 import eventRoutes from "./events-routes.js"
 import alertRoutes from "./alerts-routes.js"
 import plantRoutes from "./plant-routes.js"
+import submissionRoutes from "./submissions-routes.js"
 
 const app = express()
 
@@ -50,6 +51,7 @@ app.use("/api/auth", authRoutes)
 app.use("/api/events", eventRoutes)
 app.use("/api/alerts", alertRoutes)
 app.use("/api/plants", plantRoutes)
+app.use("/api/submissions", submissionRoutes)
 
 // ── Routes ──────────────────────────────────────────────────────────────────
 

@@ -9,8 +9,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * storage and re-importing the module. That also exercises `hydrate()`, which is
  * the real cold-start path a user hits on a page refresh.
  */
+const TEST_SUBMISSIONS = [
+  { id: 'SUB-4421', staffName: 'Test One', staffId: 'STF-001', staffType: 'Staff', treeTag: 'TRE-0892', species: 'Narra', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 09:14', lat: '12.5101', lng: '124.6679', photo: '' },
+  { id: 'SUB-4420', staffName: 'Test Two', staffId: 'STF-002', staffType: 'Staff', treeTag: 'TRE-0567', species: 'Molave', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 08:58', lat: '12.5098', lng: '124.6681', photo: '' },
+  { id: 'SUB-4419', staffName: 'Test Three', staffId: 'STF-003', staffType: 'Staff', treeTag: 'TRE-1204', species: 'Ipil', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 16:31', lat: '12.5092', lng: '124.6677', photo: '' },
+  { id: 'SUB-4418', staffName: 'Test Four', staffId: 'STF-004', staffType: 'Staff', treeTag: 'TRE-0341', species: 'Mahogany', type: 'verification', status: 'approved', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 14:05', lat: '12.5100', lng: '124.6671', photo: '' },
+  { id: 'SUB-4417', staffName: 'Test Five', staffId: 'STF-005', staffType: 'Staff', treeTag: 'TRE-0783', species: 'Banaba', type: 'incident', status: 'declined', event: 'Earth Month Campaign', date: 'Apr 27, 2026 11:22', lat: '12.5135', lng: '124.6616', photo: '' },
+  { id: 'SUB-4415', staffName: 'Test Six', staffId: 'STF-007', staffType: 'Staff', treeTag: 'TRE-0223', species: 'Narra', type: 'verification', status: 'pending', event: 'Campus Reforestation Q2', date: 'Apr 26, 2026 15:18', lat: '12.5105', lng: '124.6676', photo: '' },
+  { id: 'SUB-4416', staffName: 'Test Seven', staffId: 'STF-006', staffType: 'Staff', treeTag: 'TRE-1108', species: 'Kamagong', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 10:44', lat: '12.5094', lng: '124.6671', photo: '' },
+  { id: 'SUB-4414', staffName: 'Test Eight', staffId: 'STF-008', staffType: 'Staff', treeTag: 'TRE-0950', species: 'Molave', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 26, 2026 09:33', lat: '12.5128', lng: '124.6617', photo: '' },
+]
+
 async function freshStore() {
   localStorage.clear()
+  localStorage.setItem('ecotrace_store_v1', JSON.stringify({ submissions: TEST_SUBMISSIONS }))
   vi.resetModules()
   return import('./store')
 }
@@ -238,10 +250,8 @@ describe('persistence', () => {
     vi.resetModules()
     const { getSnapshot } = await import('./store')
     const subs = getSnapshot().submissions
-    // The live row wins and keeps its edit...
     expect(subs.find(s => s.id === 'SUB-4421')?.staffName).toBe('Edited')
-    // ...and the fixtures the saved list never saw are appended, not shadowed.
-    expect(subs.find(s => s.id === 'SUB-4414')).toBeDefined()
+    expect(subs).toHaveLength(1)
     expect(subs[0].id).toBe('SUB-4421')
   })
 
@@ -249,7 +259,7 @@ describe('persistence', () => {
     localStorage.setItem(STORAGE_KEY, '{ this is not json')
     vi.resetModules()
     const { getSnapshot } = await import('./store')
-    expect(getSnapshot().submissions).toHaveLength(8)
+    expect(getSnapshot().submissions).toHaveLength(0)
   })
 
   it('pages older audit history and records how much has been loaded', async () => {
@@ -413,7 +423,7 @@ describe('derived selectors', () => {
     actions.createEvent(draft(), true)
     actions.resetDemoData()
     const snap = getSnapshot()
-    expect(snap.submissions.find(s => s.id === 'SUB-4421')?.status).toBe('pending')
+    expect(snap.submissions).toHaveLength(0)
     expect(snap.events).toHaveLength(4)
     expect(snap.logs).toHaveLength(12)
   })

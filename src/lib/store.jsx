@@ -1,35 +1,4 @@
-/**
- * Shared client-side portal store.
- *
- * ── Why this exists ───────────────────────────────────────────────────────────
- * The MariaDB API is read-only by design (see `server/`), so the admin portal
- * has nowhere to persist an Approve, a Decline or a new Event. Rather than leave
- * those buttons dead, every mutation lands here in `localStorage` and is labelled
- * in the UI as not yet synced to the database.
- *
- * ── The one rule that keeps the migration cheap ───────────────────────────────
- * Components NEVER call a setter. They call an action from this module, and each
- * action fans out to all three consumers in one place:
- *   1. the domain state (submissions / events / logs / notifications)
- *   2. an audit-log row
- *   3. a notification + a toast
- * Those three are currently independent and drift apart (the old Approve button
- * updated a local array, the audit log was a frozen fixture, and the only
- * notification fired from a hard-coded `setTimeout`). When the server gains write
- * endpoints, the bodies of the `act*` functions below are the only thing that
- * changes — a one-file change, as promised.
- *
- * ── Honesty constraints, deliberately preserved ────────────────────────────────
- * - Approving a submission does NOT recolour the map pin. Pins come from
- *   `usePlants` -> read-only MariaDB. Faking it would make the map lie about
- *   the server. An approval is visible on the sidebar badge, the Overview stats,
- *   the per-event pending counts and the audit log.
- * - The store is per-browser, not per-user. Two admins on two machines will not
- *   see each other's approvals. That is the honest ceiling of a read-only
- *   backend, not an oversight.
- * - `document.title` and the sidebar badge are derived from this store, so they
- *   cannot disagree with the data on screen.
- */
+/** Shared client-side portal store. */
 import {
   createContext,
   useCallback,
@@ -195,23 +164,7 @@ export const LEGACY_NOTIFICATION_TARGET = /** @type {NotificationTarget} */ ({ m
  */
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
-// Moved here from the modules so the store owns hydration. A module can no longer
-// fall back to its own array and silently disagree with what is persisted.
-
-/** Coordinates are UEP Catarman, Northern Samar (12.50xx N / 124.66xx E) and are
- *  derived from the matching treeTag entries in `lib/trees.js` so that every
- *  submission resolves to the same point the map layer renders. */
-/** @type {Submission[]} */
-const SEED_SUBMISSIONS = [
-  { id: 'SUB-4421', staffName: 'Juan Santos', staffId: 'STF-001', staffType: 'Volunteer', treeTag: 'TRE-0892', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 09:14', lat: '12.5101', lng: '124.6679', photo: '/assets/evidence/canopy-healthy.svg', notes: 'Tree is healthy, new growth visible.' },
-  { id: 'SUB-4420', staffName: 'Maria Reyes', staffId: 'STF-002', staffType: 'Intern', treeTag: 'TRE-0567', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 28, 2026 08:58', lat: '12.5098', lng: '124.6681', photo: '/assets/evidence/incident-uprooted.svg', incidentType: 'Dead / Uprooted Tree', notes: 'Tree has been uprooted, possibly by recent storm.' },
-  { id: 'SUB-4419', staffName: 'Carlo Diaz', staffId: 'STF-003', staffType: 'Staff', treeTag: 'TRE-1204', species: 'Ipil (Intsia bijuga)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 16:31', lat: '12.5092', lng: '124.6677', photo: '/assets/evidence/sapling-baseline.svg' },
-  { id: 'SUB-4418', staffName: 'Ana Lim', staffId: 'STF-004', staffType: 'Volunteer', treeTag: 'TRE-0341', species: 'Mahogany (Swietenia macrophylla)', type: 'verification', status: 'approved', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 14:05', lat: '12.5100', lng: '124.6671', photo: '/assets/evidence/canopy-healthy.svg' },
-  { id: 'SUB-4417', staffName: 'Ben Cruz', staffId: 'STF-005', staffType: 'Intern', treeTag: 'TRE-0783', species: 'Banaba (Lagerstroemia speciosa)', type: 'incident', status: 'declined', event: 'Earth Month Campaign', date: 'Apr 27, 2026 11:22', lat: '12.5135', lng: '124.6616', photo: '/assets/evidence/incident-uprooted.svg', incidentType: 'Location Mismatch', declineReason: 'Out-of-Bounds GPS' },
-  { id: 'SUB-4416', staffName: 'Sofia Torres', staffId: 'STF-006', staffType: 'Staff', treeTag: 'TRE-1108', species: 'Kamagong (Diospyros blancoi)', type: 'verification', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 27, 2026 10:44', lat: '12.5094', lng: '124.6671', photo: '/assets/evidence/sapling-baseline.svg' },
-  { id: 'SUB-4415', staffName: 'Rico Mendoza', staffId: 'STF-007', staffType: 'Volunteer', treeTag: 'TRE-0223', species: 'Narra (Pterocarpus indicus)', type: 'verification', status: 'pending', event: 'Campus Reforestation Q2', date: 'Apr 26, 2026 15:18', lat: '12.5105', lng: '124.6676', photo: '/assets/evidence/canopy-healthy.svg' },
-  { id: 'SUB-4414', staffName: 'Lena Bautista', staffId: 'STF-008', staffType: 'Intern', treeTag: 'TRE-0950', species: 'Molave (Vitex parviflora)', type: 'incident', status: 'pending', event: 'Arbor Day Drive 2026', date: 'Apr 26, 2026 09:33', lat: '12.5128', lng: '124.6617', photo: '/assets/evidence/incident-pest.svg', incidentType: 'Pest Infestation' },
-]
+// Events, logs, and notifications remain available for offline portal features.
 
 /** @type {PortalEvent[]} */
 const SEED_EVENTS = [
@@ -395,7 +348,7 @@ function mergeRows(fixtures, persisted) {
 /** @returns {StoreSnapshot} */
 function seedState() {
   return {
-    submissions: SEED_SUBMISSIONS.slice(),
+    submissions: [],
     events: SEED_EVENTS.slice(),
     logs: SEED_LOGS.slice(),
     notifications: SEED_NOTIFICATIONS.slice(),
@@ -454,7 +407,7 @@ function hydrate() {
     .map(withTarget)
     .sort((a, b) => a.time - b.time)
   return {
-    submissions: mergeRows(SEED_SUBMISSIONS, saved.submissions),
+    submissions: mergeRows([], saved.submissions),
     events: mergeRows(SEED_EVENTS, saved.events),
     logs: mergeRows(SEED_LOGS, saved.logs),
     notifications,
@@ -869,14 +822,14 @@ export const actions = {
 
   recordExport,
 
-  /** Wipe local edits and fall back to the bundled fixtures. */
+  /** Clear local data and restore the offline defaults. */
   resetDemoData() {
     set(s => {
       const fresh = seedState()
       fresh.actor = s.actor
       return pushNotification(
-        pushToast(fresh, 'Demo data reset to the bundled fixtures', 'success'),
-        'Local demo data was reset to the bundled fixtures',
+        pushToast(fresh, 'Local demo data reset', 'success'),
+        'Local demo data was reset',
         'info',
         { module: 'overview' },
       )

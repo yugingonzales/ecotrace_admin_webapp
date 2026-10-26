@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePortal } from '../../lib/store'
 import { useEscapeToClose, useScrollLock } from '../../lib/useEscapeToClose'
+import { API_ENABLED } from '../../lib/api'
+import { useSubmissions } from '../../lib/useSubmissions'
 
 /** @typedef {import('../../lib/store.js').SubStatus} SubStatus */
 /** @typedef {import('../../lib/store.js').SubType} SubType */
 /** @typedef {import('../../lib/store.js').Submission} Submission */
 
-/** Rows per page. The table previously rendered a hard-coded "1 / 2" pager whose
- *  Prev/Next buttons did nothing at all. */
 const PAGE_SIZE = 5
 
 /** @type {Record<SubStatus, string>} */
@@ -201,42 +201,33 @@ export default function SubmissionsView() {
     focus,
     clearFocus,
   } = usePortal()
-  // The generics are pinned by casting the argument. A `useState<T>(...)` written
-  // here would be parsed as comparison operators by esbuild, not as a generic.
+  const apiData = useSubmissions()
+  const rows = API_ENABLED ? apiData.submissions : submissions
+  const pendingTotal = rows.filter(s => s.status === 'pending').length
+  const incidentTotal = rows.filter(s => s.type === 'incident').length
+  const [actionError, setActionError] = useState(/** @type {string | null} */ (null))
+  const [actionLoading, setActionLoading] = useState(false)
   const [selected, setSelected] = useState(/** @type {Set<string>} */ (new Set()))
   const [filter, setFilter] = useState(/** @type {'all' | SubType} */ ('all'))
   const [statusFilter, setStatusFilter] = useState(/** @type {'all' | SubStatus} */ ('all'))
   const [eventFilter, setEventFilter] = useState('all')
   const [search, setSearch] = useState('')
-  // Which ids the decline dialog is about. Kept explicit rather than inferred
-  // from `selected`, so the drawer's Decline button can never accidentally act
-  // on an unrelated selection.
   const [declineTarget, setDeclineTarget] = useState(/** @type {string[] | null} */ (null))
-  // Stored as an id, never as the row object: after an action the row object in
-  // the store is a new object, and a drawer holding the old one would keep
-  // rendering the stale "Pending" badge and its action buttons.
   const [drawerId, setDrawerId] = useState(/** @type {string | null} */ (null))
   const [page, setPage] = useState(1)
 
-  const drawerSub = drawerId ? (submissions.find(s => s.id === drawerId) ?? null) : null
+  const drawerSub = drawerId ? (rows.find(s => s.id === drawerId) ?? null) : null
 
-  // Deep link from a notification or from the map: jump to the tree tag and open
-  // its row, or apply the filter the notification was announcing, then release the
-  // focus so a later store update does not re-open it. The effect keys on the
-  // whole focus object, whose nonce makes a repeat click of the same
-  // notification fire again instead of resolving to a no-op.
   useEffect(() => {
     if (!focus) return
     const { treeTag, status, type, event } = focus
     setPage(1)
     if (treeTag) {
-      // A tree tag identifies one row, so any active filter has to go or the
-      // drawer would open onto a list the row is not even in.
       setSearch('')
       setFilter('all')
       setStatusFilter('all')
       setEventFilter('all')
-      const match = submissions.find(s => s.treeTag === treeTag)
+      const match = rows.find(s => s.treeTag === treeTag)
       if (match) setDrawerId(match.id)
     } else {
       setDrawerId(null)
@@ -245,16 +236,16 @@ export default function SubmissionsView() {
       if (event) setEventFilter(event)
     }
     clearFocus()
-  }, [focus, submissions, clearFocus])
+  }, [focus, rows, clearFocus])
 
   const eventNames = useMemo(
-    () => [...new Set(submissions.map(s => s.event))].sort((a, b) => a.localeCompare(b)),
-    [submissions],
+    () => [...new Set(rows.map(s => s.event))].sort((a, b) => a.localeCompare(b)),
+    [rows],
   )
 
   const needle = search.trim().toLowerCase()
 
-  const filtered = submissions.filter(s => {
+  const filtered = rows.filter(s => {
     if (filter !== 'all' && s.type !== filter) return false
     if (statusFilter !== 'all' && s.status !== statusFilter) return false
     if (eventFilter !== 'all' && s.event !== eventFilter) return false
@@ -272,7 +263,22 @@ export default function SubmissionsView() {
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   const pendingSelected = Array.from(selected)
-    .filter(id => submissions.find(s => s.id === id)?.status === 'pending')
+    .filter(id => rows.find(s => s.id === id)?.status === 'pending')
+
+  async function applyApiReview(ids, status, reason = '', note = '') {
+    setActionError(null)
+    setActionLoading(true)
+    try {
+      for (const id of ids) await apiData.review(id, { status, ...(reason ? { reason } : {}), ...(note ? { note } : {}) })
+      apiData.refresh()
+      setSelected(new Set())
+      setDeclineTarget(null)
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'Review action failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   const allFilteredSelected = filtered.length > 0 && filtered.every(s => selected.has(s.id))
 
@@ -288,10 +294,9 @@ export default function SubmissionsView() {
     setSelected(next)
   }
 
-  const batchApprove = () => {
-    storeActions.approveSubmissions(pendingSelected)
-    setSelected(new Set())
-  }
+  const batchApprove = () => API_ENABLED
+    ? applyApiReview(pendingSelected, 'approved')
+    : (storeActions.approveSubmissions(pendingSelected), setSelected(new Set()))
 
   /**
    * @param {string} reason
@@ -299,24 +304,33 @@ export default function SubmissionsView() {
    */
   const batchDecline = (reason, note) => {
     if (!declineTarget) return
+    if (API_ENABLED) return applyApiReview(declineTarget, 'declined', reason, note)
     storeActions.declineSubmissions(declineTarget, reason, note)
     setSelected(new Set())
     setDeclineTarget(null)
   }
 
-  const batchResubmit = () => {
-    storeActions.requestResubmit(pendingSelected)
-    setSelected(new Set())
-  }
+  const batchResubmit = () => API_ENABLED
+    ? applyApiReview(pendingSelected, 'resubmit')
+    : (storeActions.requestResubmit(pendingSelected), setSelected(new Set()))
 
-  const singleApprove = () => drawerSub && storeActions.approveSubmissions([drawerSub.id])
-  const singleResubmit = () => drawerSub && storeActions.requestResubmit([drawerSub.id])
+  const singleApprove = () => drawerSub && (API_ENABLED ? applyApiReview([drawerSub.id], 'approved') : storeActions.approveSubmissions([drawerSub.id]))
+  const singleResubmit = () => drawerSub && (API_ENABLED ? applyApiReview([drawerSub.id], 'resubmit') : storeActions.requestResubmit([drawerSub.id]))
   const singleDecline = () => {
     if (drawerSub) setDeclineTarget([drawerSub.id])
   }
 
   return (
     <div className="relative">
+      {(apiData.error || actionError) && (
+        <div className="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 mb-3 text-xs" style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }} role="alert">
+          <span>{actionError || apiData.error}</span>
+          <button className="btn btn-sm" onClick={() => { setActionError(null); apiData.refresh() }}>Retry</button>
+        </div>
+      )}
+      {API_ENABLED && apiData.loading && (
+        <div className="py-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>Loading submissions…</div>
+      )}
       {declineTarget && (
         <DeclineModal
           count={declineTarget.length}
@@ -341,9 +355,9 @@ export default function SubmissionsView() {
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Batch-process staff tree planting and incident submissions</p>
         </div>
         <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <span className="mono">{pendingCount} pending</span>
+          <span className="mono">{pendingTotal} pending</span>
           <span>·</span>
-          <span>{incidentCount} incidents</span>
+          <span>{incidentTotal} incidents</span>
         </div>
       </div>
 {/* Filters & Search */}

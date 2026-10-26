@@ -721,15 +721,19 @@ function EditEventForm({ event, onClose, onSaved }) {
   })
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState(null)
-  const toggleMetric = (metric) => setForm((current) => ({
-    ...current,
-    metrics: current.metrics.includes(metric)
-      ? current.metrics.filter((item) => item !== metric)
-      : [...current.metrics, metric],
-  }))
+  const toggleMetric = (metric) =>
+    setForm((current) => ({
+      ...current,
+      metrics: current.metrics.includes(metric)
+        ? current.metrics.filter((item) => item !== metric)
+        : [...current.metrics, metric],
+    }))
   const submit = async (e) => {
     e.preventDefault()
-    if (!API_ENABLED) { setError("Enable the API to modify persisted events."); return }
+    if (!API_ENABLED) {
+      setError("Enable the API to modify persisted events.")
+      return
+    }
     try {
       const updated = await updateApiEvent(Number(event.id.replace(/^E/, "")), {
         event_title: form.title.trim(),
@@ -742,47 +746,300 @@ function EditEventForm({ event, onClose, onSaved }) {
         event_boundary: form.boundary,
       })
       onSaved(updated)
-    } catch (cause) { setError(cause.message) }
+    } catch (cause) {
+      setError(cause.message)
+    }
   }
   return (
     <div className="overlay">
       <form className="modal" style={{ maxWidth: 760 }} onSubmit={submit}>
-        <div className="modal-header"><div><h2 className="modal-title">Edit / Modify Event</h2><p className="text-xs" style={{ color: "var(--text-muted)" }}>Changes are announced to EcoTrace users.</p></div><button type="button" onClick={onClose} className="btn btn-sm">×</button></div>
-        <div className="modal-body space-y-4">
-          {error && <div className="text-xs" style={{ color: "var(--danger)" }}>{error}</div>}
-          <div><label className="field-label">Event title *</label><input className="input" required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} /></div>
-          <div className="grid grid-cols-2 gap-4"><div><label className="field-label">Start date *</label><input className="input" type="date" required value={form.start} onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))} /></div><div><label className="field-label">End date / extension *</label><input className="input" type="date" required value={form.end} onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))} /></div></div>
-          <div className="grid grid-cols-2 gap-4"><div><label className="field-label">Target location / zone *</label><input className="input" required value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} /></div><div><label className="field-label">Trees per staff member (reassign quota) *</label><input className="input" type="number" min="0" max="100000" required value={form.quota} onChange={(e) => setForm((f) => ({ ...f, quota: e.target.value }))} /></div></div>
-          <div><div className="flex items-center justify-between"><label className="field-label mb-2">Verification metrics</label><button type="button" className="btn btn-sm" onClick={() => setForm((f) => ({ ...f, metrics: f.metrics.length === METRIC_OPTIONS.length ? [] : [...METRIC_OPTIONS] }))}>{form.metrics.length === METRIC_OPTIONS.length ? "Clear all" : "Select all"}</button></div><div className="flex flex-wrap gap-2">{METRIC_OPTIONS.map((metric) => <button type="button" key={metric} className="btn btn-sm" aria-pressed={form.metrics.includes(metric)} onClick={() => toggleMetric(metric)} style={{ borderColor: form.metrics.includes(metric) ? "var(--accent)" : "var(--border)", background: form.metrics.includes(metric) ? "var(--accent-soft)" : "var(--field)" }}>{form.metrics.includes(metric) ? "✓ " : ""}{metric}</button>)}</div></div>
-          <div><label className="field-label">Geofencing boundary</label><EventBoundaryEditor zoneLabel={form.location} boundary={form.boundary} onChange={(boundary) => setForm((f) => ({ ...f, boundary }))} expanded={expanded} onExpand={() => setExpanded(true)} onClose={() => setExpanded(false)} /></div>
+        <div className="modal-header">
+          <div>
+            <h2 className="modal-title">Edit / Modify Event</h2>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Changes are announced to EcoTrace users.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="btn btn-sm">
+            ×
+          </button>
         </div>
-        <div className="modal-footer"><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="submit" className="btn btn-primary">Save changes</button></div>
+        <div className="modal-body space-y-4">
+          {error && (
+            <div className="text-xs" style={{ color: "var(--danger)" }}>
+              {error}
+            </div>
+          )}
+          <div>
+            <label className="field-label">Event title *</label>
+            <input
+              className="input"
+              required
+              value={form.title}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, title: e.target.value }))
+              }
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="field-label">Start date *</label>
+              <input
+                className="input"
+                type="date"
+                required
+                value={form.start}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, start: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="field-label">End date / extension *</label>
+              <input
+                className="input"
+                type="date"
+                required
+                value={form.end}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, end: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="field-label">Target location / zone *</label>
+              <input
+                className="input"
+                required
+                value={form.location}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, location: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="field-label">
+                Trees per staff member (reassign quota) *
+              </label>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                max="100000"
+                required
+                value={form.quota}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, quota: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="field-label mb-2">Verification metrics</label>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() =>
+                  setForm((f) => ({
+                    ...f,
+                    metrics:
+                      f.metrics.length === METRIC_OPTIONS.length
+                        ? []
+                        : [...METRIC_OPTIONS],
+                  }))
+                }
+              >
+                {form.metrics.length === METRIC_OPTIONS.length
+                  ? "Clear all"
+                  : "Select all"}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {METRIC_OPTIONS.map((metric) => (
+                <button
+                  type="button"
+                  key={metric}
+                  className="btn btn-sm"
+                  aria-pressed={form.metrics.includes(metric)}
+                  onClick={() => toggleMetric(metric)}
+                  style={{
+                    borderColor: form.metrics.includes(metric)
+                      ? "var(--accent)"
+                      : "var(--border)",
+                    background: form.metrics.includes(metric)
+                      ? "var(--accent-soft)"
+                      : "var(--field)",
+                  }}
+                >
+                  {form.metrics.includes(metric) ? "✓ " : ""}
+                  {metric}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="field-label">Geofencing boundary</label>
+            <EventBoundaryEditor
+              zoneLabel={form.location}
+              boundary={form.boundary}
+              onChange={(boundary) => setForm((f) => ({ ...f, boundary }))}
+              expanded={expanded}
+              onExpand={() => setExpanded(true)}
+              onClose={() => setExpanded(false)}
+            />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary">
+            Save changes
+          </button>
+        </div>
       </form>
     </div>
   )
 }
 
-function CreateAlertForm({ onClose }) {
-  const [form, setForm] = useState({ title: "", body: "", label: "ANNOUNCEMENT", type: "info" })
+function CreateAlertForm({ onClose, events }) {
+  const [form, setForm] = useState({
+    title: "",
+    body: "",
+    label: "ANNOUNCEMENT",
+    type: "info",
+    eventId: events[0]?.id ?? "",
+  })
   const [error, setError] = useState(null)
   const submit = async (event) => {
     event.preventDefault()
+    if (!API_ENABLED) {
+      setError("Enable the API to publish a mobile alert.")
+      return
+    }
+    const eventId = Number(form.eventId.replace(/^E/, ""))
+    if (!Number.isInteger(eventId) || eventId < 1) {
+      setError("Choose an event before publishing the alert.")
+      return
+    }
     try {
-      await createApiAlert({ alert_title: form.title.trim(), alert_body: form.body.trim(), alert_label: form.label.trim() || "INFO", alert_type: form.type, alert_status: "published" })
+      await createApiAlert({
+        event_id: eventId,
+        alert_title: form.title.trim(),
+        alert_body: form.body.trim(),
+        alert_label: form.label.trim() || "INFO",
+        alert_type: form.type,
+        alert_status: "published",
+      })
       onClose()
-    } catch (cause) { setError(cause.message) }
+    } catch (cause) {
+      setError(cause.message)
+    }
   }
   return (
-    <div className="overlay"><form className="modal" style={{ maxWidth: 520 }} onSubmit={submit}>
-      <div className="modal-header"><h2 className="modal-title">Publish Mobile Alert</h2><button type="button" onClick={onClose} className="btn btn-sm">×</button></div>
-      <div className="modal-body space-y-4">
-        {error && <div className="text-xs" style={{ color: "var(--danger)" }}>{error}</div>}
-        <div><label className="field-label">Title *</label><input className="input" required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} /></div>
-        <div><label className="field-label">Message *</label><textarea className="textarea" required value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} /></div>
-        <div className="grid grid-cols-2 gap-4"><div><label className="field-label">Category</label><select className="select" value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}><option value="ANNOUNCEMENT">Announcement</option><option value="ALERT">Alert</option><option value="REMINDER">Reminder</option></select></div><div><label className="field-label">Severity</label><select className="select" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}><option value="info">Info</option><option value="success">Success</option><option value="warning">Warning</option><option value="error">Urgent</option></select></div></div>
-      </div>
-      <div className="modal-footer"><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="submit" className="btn btn-primary">Publish alert</button></div>
-    </form></div>
+    <div className="overlay">
+      <form className="modal" style={{ maxWidth: 520 }} onSubmit={submit}>
+        <div className="modal-header">
+          <h2 className="modal-title">Publish Mobile Alert</h2>
+          <button type="button" onClick={onClose} className="btn btn-sm">
+            ×
+          </button>
+        </div>
+        <div className="modal-body space-y-4">
+          {error && (
+            <div className="text-xs" style={{ color: "var(--danger)" }}>
+              {error}
+            </div>
+          )}
+          <div>
+            <label className="field-label">Event *</label>
+            <select
+              className="select"
+              required
+              value={form.eventId}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, eventId: e.target.value }))
+              }
+            >
+              <option value="" disabled>
+                Select an event
+              </option>
+              {events.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.id} · {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="field-label">Title *</label>
+            <input
+              className="input"
+              required
+              value={form.title}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, title: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label className="field-label">Message *</label>
+            <textarea
+              className="textarea"
+              required
+              value={form.body}
+              onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="field-label">Category</label>
+              <select
+                className="select"
+                value={form.label}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, label: e.target.value }))
+                }
+              >
+                <option value="ANNOUNCEMENT">Announcement</option>
+                <option value="ALERT">Alert</option>
+                <option value="REMINDER">Reminder</option>
+              </select>
+            </div>
+            <div>
+              <label className="field-label">Severity</label>
+              <select
+                className="select"
+                value={form.type}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, type: e.target.value }))
+                }
+              >
+                <option value="info">Info</option>
+                <option value="success">Success</option>
+                <option value="warning">Warning</option>
+                <option value="error">Urgent</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={!events.length}
+          >
+            Publish alert
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -845,7 +1102,11 @@ export default function EventManagement() {
   }
 
   const removeSelectedEvent = async () => {
-    if (!selectedEvent || !window.confirm(`Delete ${selectedEvent.name}? This cannot be undone.`)) return
+    if (
+      !selectedEvent ||
+      !window.confirm(`Delete ${selectedEvent.name}? This cannot be undone.`)
+    )
+      return
     try {
       if (!API_ENABLED) {
         window.alert("Enable the API to delete persisted events.")
@@ -853,10 +1114,14 @@ export default function EventManagement() {
       }
       if (API_ENABLED) {
         await deleteApiEvent(Number(selectedEvent.id.replace(/^E/, "")))
-        setApiEvents((current) => (current ?? []).filter((item) => item.id !== selectedEvent.id))
+        setApiEvents((current) =>
+          (current ?? []).filter((item) => item.id !== selectedEvent.id),
+        )
       }
       setSelectedId(null)
-    } catch (error) { window.alert(error.message) }
+    } catch (error) {
+      window.alert(error.message)
+    }
   }
 
   const exportLog = (ev) => {
@@ -903,8 +1168,28 @@ export default function EventManagement() {
 
   return (
     <div>
-      {showAlert && <CreateAlertForm onClose={() => setShowAlert(false)} />}
-      {showEdit && selectedEvent && <EditEventForm event={selectedEvent} onClose={() => setShowEdit(false)} onSaved={(updated) => { setApiEvents((current) => (current ?? []).map((item) => item.id === selectedEvent.id ? apiEventToPortalEvent(updated) : item)); setShowEdit(false) }} />}
+      {showAlert && (
+        <CreateAlertForm
+          events={visibleData}
+          onClose={() => setShowAlert(false)}
+        />
+      )}
+      {showEdit && selectedEvent && (
+        <EditEventForm
+          event={selectedEvent}
+          onClose={() => setShowEdit(false)}
+          onSaved={(updated) => {
+            setApiEvents((current) =>
+              (current ?? []).map((item) =>
+                item.id === selectedEvent.id
+                  ? apiEventToPortalEvent(updated)
+                  : item,
+              ),
+            )
+            setShowEdit(false)
+          }}
+        />
+      )}
 
       {showCreate && (
         <CreateEventForm
@@ -928,8 +1213,15 @@ export default function EventManagement() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowAlert(true)} className="btn">Publish Alert</button>
-          <button onClick={() => setShowCreate(true)} className="btn btn-primary"><span>+</span> New Event</button>
+          <button onClick={() => setShowAlert(true)} className="btn">
+            Publish Alert
+          </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="btn btn-primary"
+          >
+            <span>+</span> New Event
+          </button>
         </div>
       </div>
 
@@ -953,8 +1245,16 @@ export default function EventManagement() {
               </div>
             </div>
             <div className="flex gap-2 items-start">
-              <button className="btn btn-sm" onClick={editSelectedEvent}>Edit / Modify</button>
-              <button className="btn btn-sm" style={{ color: "var(--danger)" }} onClick={removeSelectedEvent}>Delete</button>
+              <button className="btn btn-sm" onClick={editSelectedEvent}>
+                Edit / Modify
+              </button>
+              <button
+                className="btn btn-sm"
+                style={{ color: "var(--danger)" }}
+                onClick={removeSelectedEvent}
+              >
+                Delete
+              </button>
               <button
                 className="btn btn-sm btn-primary"
                 onClick={() => exportLog(selectedEvent)}

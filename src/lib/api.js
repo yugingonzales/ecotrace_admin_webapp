@@ -462,6 +462,16 @@ export function createVerification(input) {
   )
 }
 
+/** `GET /api/submissions` — authenticated admin review queue. */
+export function listSubmissions(params = {}) {
+  return request(`/submissions${toQuery(params)}`)
+}
+
+/** `PATCH /api/submissions/:id/review` — transactional review decision. */
+export function reviewSubmission(submissionId, input) {
+  return request(`/submissions/${submissionId}/review`, { method: 'PATCH', body: input })
+}
+
 /**
  * `GET /api/health` — unauthenticated liveness probe.
  * @returns {Promise<{ status: string, db: string }>}
@@ -472,12 +482,9 @@ export function health() {
   )
 }
 
-// NOTE: these two are intentionally absent. `AuditLogs.jsx` and the incident
-// counters on the Overview have no backing table in `ecotrace_db` yet, so the
-// corresponding routes cannot be specified honestly. They are called out in
-// INTEGRATION_PROGRESS_LOG.md under "Schema gaps".
-//   GET /api/audit-logs  -> needs `ecotrace_audit_logs`
-//   GET /api/incidents   -> needs `ecotrace_incidents`
+// Audit-log and incident list routes will be added after their response
+// projections and retention/filtering contract are finalized. The submission
+// review route above is the first durable mutation boundary.
 
 /** @param {Record<string, string | number | undefined>} params @returns {string} */
 function toQuery(params) {
