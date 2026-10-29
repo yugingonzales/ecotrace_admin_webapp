@@ -14,6 +14,7 @@ import { z } from "zod"
 import { fileURLToPath } from "node:url"
 
 import { ping, closePool } from "./db.js"
+import { processEventLifecycle } from "./alert-service.js"
 
 import authRoutes from "./auth-routes.js"
 
@@ -54,6 +55,11 @@ app.use("/api/plants", plantRoutes)
 app.use("/api/submissions", submissionRoutes)
 
 // ── Routes ──────────────────────────────────────────────────────────────────
+
+const lifecycleTimer = setInterval(() => {
+  processEventLifecycle().catch((error) => console.error('[ecotrace-api] event lifecycle:', error))
+}, 60_000)
+lifecycleTimer.unref?.()
 
 app.get("/api/health", async (_req, res) => {
   const db = await ping()
@@ -129,6 +135,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const signal of ["SIGINT", "SIGTERM"]) {
     process.on(signal, () => {
       server.close(async () => {
+        clearInterval(lifecycleTimer)
         await closePool()
 
         process.exit(0)

@@ -5,6 +5,7 @@ import { z } from "zod"
 import { pool } from "./db.js"
 
 import { authenticate, requireRoles } from "./middleware/auth.js"
+import { createPublishedAlert } from "./alert-service.js"
 
 const router = Router()
 
@@ -28,6 +29,9 @@ const eventInput = z
     start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 
     end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+
+    start_at: z.string().datetime().nullable().optional(),
+    end_at: z.string().datetime().nullable().optional(),
 
     trees_per_student: z.coerce.number().int().min(0).max(100000),
 
@@ -54,6 +58,10 @@ const fields = `event_id, event_title, event_description, event_location, event_
   event_boundary,
   DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
   DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date,
+  DATE_FORMAT(start_at, '%Y-%m-%dT%H:%i:%sZ') AS start_at,
+  DATE_FORMAT(end_at, '%Y-%m-%dT%H:%i:%sZ') AS end_at,
+  DATE_FORMAT(live_at, '%Y-%m-%dT%H:%i:%sZ') AS live_at,
+  DATE_FORMAT(concluded_at, '%Y-%m-%dT%H:%i:%sZ') AS concluded_at,
   trees_per_student, target_year_batch, attendee_count, event_status,
   monitoring_metrics, created_by, created_at, updated_at`
 
@@ -193,8 +201,8 @@ router.post(
       const [result] = await pool.execute(
         `INSERT INTO ecotrace_events
        (event_title, event_description, event_location, event_zone, event_boundary, start_date, end_date,
-        trees_per_student, target_year_batch, attendee_count, event_status, monitoring_metrics, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        start_at, end_at, trees_per_student, target_year_batch, attendee_count, event_status, monitoring_metrics, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 
         [
           input.event_title,
@@ -205,6 +213,8 @@ router.post(
 
           input.start_date,
           input.end_date,
+          input.start_at ?? null,
+          input.end_at ?? null,
           input.trees_per_student,
           input.target_year_batch ?? null,
 
@@ -223,12 +233,78 @@ router.post(
         [result.insertId],
       )
 
+      if (input.event_status === 'active') {
+        const connection = await pool.getConnection()
+        try {
+          await connection.beginTransaction()
+          await createPublishedAlert(connection, {
+            eventId: result.insertId,
+            notificationCode: 'upcoming_event',
+            title: `Upcoming event: ${input.event_title}`,
+            body: `${input.start_date} — ${input.event_location ?? input.event_zone ?? 'target geofenced area'}. Objectives: ${(input.monitoring_metrics ?? []).join(', ') || 'tree monitoring and verification'}.`,
+            label: 'UPCOMING EVENT',
+            type: 'info',
+            metadata: { event_id: result.insertId, start_at: input.start_at ?? null, geofenced_area: input.event_zone ?? input.event_location ?? null },
+            createdBy: req.user.id,
+            allUsers: true,
+          })
+          await connection.commit()
+        } catch (error) {
+          await connection.rollback().catch(() => {})
+          throw error
+        } finally { connection.release() }
+      }
+
       res.status(201).json(rows[0])
     } catch (error) {
       next(error)
     }
   },
 )
+
+router.post('/:id/live', authenticate, requireRoles('admin'), async (req, res, next) => {
+  await transitionEvent(req, res, next, 'live')
+})
+
+router.post('/:id/conclude', authenticate, requireRoles('admin'), async (req, res, next) => {
+  await transitionEvent(req, res, next, 'conclude')
+})
+
+async function transitionEvent(req, res, next, action) {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'invalid_request', message: 'Invalid event id.' })
+  const connection = await pool.getConnection()
+  try {
+    await connection.beginTransaction()
+    const [[event]] = await connection.query('SELECT event_id, event_title, event_status FROM ecotrace_events WHERE event_id = ? FOR UPDATE', [id])
+    if (!event) {
+      await connection.rollback()
+      return res.status(404).json({ error: 'not_found', message: 'Event not found.' })
+    }
+    const conclude = action === 'conclude'
+    await connection.execute(
+      `UPDATE ecotrace_events SET event_status = ?, ${conclude ? 'concluded_at' : 'live_at'} = CURRENT_TIMESTAMP WHERE event_id = ?`,
+      [conclude ? 'completed' : 'active', id],
+    )
+    await createPublishedAlert(connection, {
+      eventId: id,
+      notificationCode: conclude ? 'event_conclusion' : 'event_live',
+      title: conclude ? `${event.event_title} has ended` : `${event.event_title} is live`,
+      body: conclude ? 'This session is closed. Please complete your final data syncs.' : 'Geofencing and AR measurement capture are now open.',
+      label: conclude ? 'EVENT ENDED' : 'EVENT LIVE',
+      type: conclude ? 'info' : 'success',
+      metadata: { event_id: id },
+      allUsers: !conclude,
+      eventParticipants: conclude,
+      createdBy: req.user.id,
+    })
+    await connection.commit()
+    res.json({ event_id: id, status: conclude ? 'completed' : 'active' })
+  } catch (error) {
+    await connection.rollback().catch(() => {})
+    next(error)
+  } finally { connection.release() }
+}
 
 router.delete(
   "/:id",

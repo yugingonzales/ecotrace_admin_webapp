@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { pool } from './db.js'
 import { authenticate, requireRoles } from './middleware/auth.js'
 import { assertStatusTransition, reviewAction } from './submission-workflow.js'
+import { createPublishedAlert } from './alert-service.js'
 
 const reviewSchema = z.object({
   status: z.enum(['approved', 'declined', 'resubmit']),
@@ -31,6 +32,22 @@ export function createSubmissionsRouter({
   const roles = (...names) => requireRolesMiddleware(...names)
 
   router.use(authenticateMiddleware)
+
+  router.get('/mine', async (req, res, next) => {
+    try {
+      const [items] = await submissionPool.query(
+        `SELECT ${submissionFields}
+         FROM ecotrace_submissions AS s
+         JOIN ecotrace_plants AS p ON p.tree_id = s.tree_id
+         LEFT JOIN users AS u ON u.id = s.submitted_by
+         LEFT JOIN ecotrace_events AS e ON e.event_id = s.event_id
+         WHERE s.submitted_by = ?
+         ORDER BY s.submitted_at DESC, s.submission_id DESC`,
+        [req.user.id],
+      )
+      res.json({ items, total: items.length })
+    } catch (error) { next(error) }
+  })
 
   router.get('/', roles('admin', 'staff'), async (req, res, next) => {
   try {
@@ -71,7 +88,7 @@ export function createSubmissionsRouter({
   try {
     await connection.beginTransaction()
     const [[submission]] = await connection.query(
-      'SELECT submission_id, tree_id, submission_status FROM ecotrace_submissions WHERE submission_id = ? FOR UPDATE',
+      'SELECT submission_id, tree_id, submitted_by, submission_type, submission_status FROM ecotrace_submissions WHERE submission_id = ? FOR UPDATE',
       [submissionId],
     )
     if (!submission) {
@@ -92,6 +109,20 @@ export function createSubmissionsRouter({
     if (parsed.data.status === 'approved') {
       await connection.query("UPDATE ecotrace_plants SET tree_status = 'verified' WHERE tree_id = ?", [submission.tree_id])
     }
+    await createPublishedAlert(connection, {
+      notificationCode: 'verification_update',
+      title: `Verification ${parsed.data.status}`,
+      body: parsed.data.status === 'approved'
+        ? 'Your tree verification record was approved.'
+        : parsed.data.status === 'resubmit'
+          ? `Your record needs changes${details.reviewerNote ? `: ${details.reviewerNote}` : '.'}`
+          : `Your record was declined${details.declineReason ? `: ${details.declineReason}` : '.'}`,
+      label: 'VERIFICATION UPDATE',
+      type: parsed.data.status === 'approved' ? 'success' : parsed.data.status === 'declined' ? 'error' : 'warning',
+      metadata: { submission_id: submissionId, status: parsed.data.status },
+      userIds: [submission.submitted_by],
+    })
+
     await connection.query(
       `INSERT INTO ecotrace_audit_logs
        (actor_user_id, action_code, entity_type, entity_id, details)

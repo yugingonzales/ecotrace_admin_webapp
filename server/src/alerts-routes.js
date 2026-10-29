@@ -5,11 +5,14 @@ import { z } from "zod"
 import { pool } from "./db.js"
 
 import { authenticate, requireRoles } from "./middleware/auth.js"
+import { createPublishedAlert } from "./alert-service.js"
 
 const router = Router()
 
 const input = z.object({
   event_id: z.coerce.number().int().positive().nullable().optional(),
+  notification_code: z.string().trim().max(48).optional(),
+  metadata: z.record(z.any()).optional(),
 
   alert_title: z.string().trim().min(1).max(160),
 
@@ -22,10 +25,10 @@ const input = z.object({
   alert_status: z.enum(["draft", "published", "archived"]).optional(),
 })
 
-const fields = `a.alert_id, a.event_id, e.event_title, a.alert_title, a.alert_body, a.alert_label, a.alert_type, a.alert_status,
+const fields = `a.alert_id, a.event_id, e.event_title, a.notification_code, a.metadata, a.alert_title, a.alert_body, a.alert_label, a.alert_type, a.alert_status,
   DATE_FORMAT(a.published_at, '%Y-%m-%dT%H:%i:%sZ') AS published_at, a.created_at, a.updated_at`
 
-const fieldsWithoutEvent = `a.alert_id, NULL AS event_id, NULL AS event_title, a.alert_title, a.alert_body, a.alert_label, a.alert_type, a.alert_status,
+const fieldsWithoutEvent = `a.alert_id, NULL AS event_id, NULL AS event_title, a.notification_code, a.metadata, a.alert_title, a.alert_body, a.alert_label, a.alert_type, a.alert_status,
   DATE_FORMAT(a.published_at, '%Y-%m-%dT%H:%i:%sZ') AS published_at, a.created_at, a.updated_at`
 
 const isSchemaMismatch = (error) =>
@@ -233,12 +236,6 @@ router.post(
 
       const status = value.alert_status ?? "published"
 
-      if (status === "published" && value.event_id == null)
-        return res.status(400).json({
-          error: "invalid_request",
-          message: "Published alerts must target an event.",
-        })
-
       const connection = await pool.getConnection()
 
       try {
@@ -246,13 +243,15 @@ router.post(
 
         const [result] = await connection.execute(
           `INSERT INTO ecotrace_alerts
-       (event_id, alert_title, alert_body, alert_label, alert_type, alert_status, published_at, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, IF(? = 'published', CURRENT_TIMESTAMP, NULL), ?)`,
+       (event_id, notification_code, alert_title, alert_body, metadata, alert_label, alert_type, alert_status, published_at, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, IF(? = 'published', CURRENT_TIMESTAMP, NULL), ?)`,
 
           [
             value.event_id ?? null,
+            value.notification_code ?? "platform_announcement",
             value.alert_title,
             value.alert_body,
+            value.metadata == null ? null : JSON.stringify(value.metadata),
             value.alert_label ?? "INFO",
             value.alert_type ?? "info",
             status,
