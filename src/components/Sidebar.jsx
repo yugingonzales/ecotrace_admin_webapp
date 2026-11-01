@@ -120,6 +120,17 @@ const nav = [
       </svg>
     ),
   },
+  {
+    id: 'alerts',
+    label: 'Alert Management',
+    icon: (
+      <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
+        <path d="M8 1v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4" strokeLinecap="round" />
+        <path d="M12 8A4 4 0 104 8a4 4 0 008 0z" />
+        <path d="M8 10v3M6 13h4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ]
 
 /** @param {SidebarProps} props */

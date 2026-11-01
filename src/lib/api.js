@@ -432,6 +432,16 @@ export function createAlert(input) {
   return /** @type {Promise<EcoAlert>} */ (request('/alerts', { method: 'POST', body: input }))
 }
 
+/** `PATCH /api/alerts/:id` — update an existing alert. */
+export function updateAlert(alertId, input) {
+  return /** @type {Promise<EcoAlert>} */ (request(`/alerts/${alertId}`, { method: 'PATCH', body: input }))
+}
+
+/** `DELETE /api/alerts/:id` — delete an alert and its recipients. */
+export function deleteAlert(alertId) {
+  return request(`/alerts/${alertId}`, { method: 'DELETE' })
+}
+
 /**
  * `GET /api/events/progress` → `vw_event_progress` (backs the Analytics charts).
  * @returns {Promise<EventProgressView[]>}

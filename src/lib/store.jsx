@@ -840,7 +840,7 @@ export const actions = {
 
 // ── React bindings ───────────────────────────────────────────────────────────
 
-/** @typedef {'overview' | 'events' | 'submissions' | 'map' | 'analytics' | 'logs'} Module */
+/** @typedef {'overview' | 'events' | 'submissions' | 'map' | 'analytics' | 'logs' | 'alerts'} Module */
 
 /** @type {Record<Module, string>} */
 export const MODULE_TITLES = {
@@ -850,6 +850,7 @@ export const MODULE_TITLES = {
   map: 'Map View',
   analytics: 'Analytics',
   logs: 'Audit Logs',
+  alerts: 'Alert Management',
 }
 
 /**

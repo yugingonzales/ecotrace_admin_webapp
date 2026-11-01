@@ -384,16 +384,26 @@ router.patch(
       if (input.event_boundary !== undefined && JSON.stringify(input.event_boundary) !== JSON.stringify(before.event_boundary))
         changes.push(input.event_boundary?.length ? "geofencing boundary updated" : "geofencing boundary removed")
       if (input.monitoring_metrics !== undefined) changes.push("verification metrics updated")
+      
+      // Detect event extension specifically
+      const isExtension = input.end_date !== undefined && input.end_date > before.end_date
       if (input.start_date !== undefined || input.end_date !== undefined)
         changes.push(`event dates updated to ${updated.start_date} through ${updated.end_date}`)
       if (input.event_title !== undefined) changes.push("event details modified")
 
       if (changes.length) {
+        const notificationCode = isExtension ? 'event_extended' : 'event_update'
         const [alertResult] = await connection.execute(
           `INSERT INTO ecotrace_alerts
-             (event_id, alert_title, alert_body, alert_label, alert_type, alert_status, published_at, created_by)
-           VALUES (?, ?, ?, 'EVENT UPDATE', 'info', 'published', CURRENT_TIMESTAMP, ?)`,
-          [id, `${updated.event_title} was updated`, `Event update: ${changes.join("; ")}.`, req.user.id],
+             (event_id, notification_code, alert_title, alert_body, alert_label, alert_type, alert_status, published_at, created_by)
+           VALUES (?, ?, ?, ?, 'EVENT UPDATE', 'info', 'published', CURRENT_TIMESTAMP, ?)`,
+          [
+            id,
+            notificationCode,
+            `${updated.event_title} was updated`,
+            `Event update: ${changes.join("; ")}.`,
+            req.user.id
+          ],
         )
         await connection.execute(
           `INSERT IGNORE INTO ecotrace_alert_recipients (alert_id, user_id)

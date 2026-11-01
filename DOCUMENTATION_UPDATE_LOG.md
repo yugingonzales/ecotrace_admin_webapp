@@ -158,4 +158,94 @@ The navigation rail is now drag-resizable in the browser.
 
 ---
 
-**Updates Completed:** 2026-10-09 (documentation pass) | 2026-10-11 (software-change entry) | 2026-10-16 (participation/alerts documentation)
+---
+
+## 2026-11-01 Update — Alert Management CRUD Complete & System Documentation
+
+### Alert Management Feature - Full Implementation ✅
+
+Completed full CRUD system for push notification management with mobile app integration.
+
+**Backend API:**
+- `POST /api/alerts` - Create alert with notification_code validation
+- `PATCH /api/alerts/:id` - Update alert (admin/staff only)
+- `DELETE /api/alerts/:id` - Delete alert with FK-aware transaction
+- `GET /api/alerts` - List alerts (existing, enhanced with recipient tracking)
+
+**Frontend Component:**
+- `src/components/modules/AlertManagement.jsx` (144 lines) - Full CRUD UI
+- Create/Edit/Delete modals with character counters
+- Status filtering (all/published/draft)
+- Notification type selector (7 codes)
+- Event linking with optional event_id input
+- Visual status badges
+
+**Mobile Integration Documentation:**
+- Documented all 7 notification codes with mobile app routing logic
+- Added `event_extended` notification (automatically distinguishes deadline extensions)
+- Provided `handleNotificationTap()` implementation example
+- Created testing scenarios for each notification type
+- Alert-event context automatically included in responses
+
+**Navigation Integration:**
+- Added "Alerts" to sidebar navigation
+- Updated App.jsx routing
+- Added alerts module to store.jsx
+
+**Database:**
+- Enhanced `server/src/alerts-routes.js` with full CRUD
+- Transaction safety for delete operations (checks FK constraints)
+- Event participation filtering for participant-only notifications
+
+### Event Extension Notification Enhancement ✅
+
+Modified event update logic to automatically detect deadline extensions and send appropriate notifications:
+- `event_extended` notification code for deadline extensions
+- `event_update` notification code for other changes (quota, boundary, location)
+- Automatic participant-only recipient filtering
+- Updated `server/src/events-routes.js` PATCH handler
+
+### System Documentation Created ✅
+
+Created comprehensive system status document:
+- **`SYSTEM_STATUS.md`** - Complete current state reference
+  - All 7 implemented admin modules documented
+  - Full API endpoint inventory (32 routes)
+  - Database schema overview (10 migrations, 11 tables)
+  - Test suite status (122/122 passing)
+  - Feature matrix with implementation status
+  - Performance metrics
+  - Known limitations and technical debt
+  - Recent changes log (last 30 days)
+  - Deployment checklist
+
+### Files Modified
+- `server/src/alerts-routes.js` - Added POST, PATCH, DELETE handlers
+- `server/src/events-routes.js` - Enhanced PATCH with event_extended notification
+- `src/components/modules/AlertManagement.jsx` - Created new component
+- `src/components/Sidebar.jsx` - Added Alerts navigation
+- `src/App.jsx` - Added AlertManagement route
+- `src/lib/store.jsx` - Added alerts module
+- `src/lib/api.js` - Added createAlert(), updateAlert(), deleteAlert()
+- `ALERT_MANAGEMENT_PROGRESS.md` - Complete implementation guide with mobile integration
+- `IMPLEMENTATION_COMPLETE.md` - Feature summary
+- `SYSTEM_STATUS.md` - New comprehensive status document
+- `DOCUMENTATION_UPDATE_LOG.md` - This update
+
+### Verification
+- Frontend tests: 122/122 passing ✅
+- Build: Clean ✅
+- API: Manually smoke tested (create/update/delete/list)
+- Mobile integration: Documented with routing examples
+
+---
+
+## 2026-11-02 Update — Cross-Repository Verification
+
+- Re-read the admin API, lifecycle service, Flutter alert feed, event routing, and announcements sheet.
+- Confirmed the backend lifecycle timer runs every 60 seconds in-process and creates one start/end alert per event using `live_at`/`concluded_at` guards.
+- Confirmed `event_extended` is created during event PATCH when `end_date` increases and targets joined participants.
+- Corrected the status wording: alerts are API-persisted/feed-based; OS-level push delivery is not implemented.
+- Recorded Flutter gaps: `platform_announcement` does not yet invoke the announcements sheet on tap, and `event_extended` is not yet actionable.
+
+**Updates Completed:** 2026-10-09 (documentation pass) | 2026-10-11 (software-change entry) | 2026-10-16 (participation/alerts documentation) | 2026-11-01 (alert management CRUD complete + system documentation) | 2026-11-02 (cross-repository verification)

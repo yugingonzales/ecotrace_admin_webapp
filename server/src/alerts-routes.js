@@ -296,4 +296,139 @@ router.post(
   },
 )
 
+router.patch(
+  "/:id",
+  authenticate,
+  requireRoles("admin"),
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id)
+      if (!Number.isInteger(id) || id < 1)
+        return res.status(400).json({ error: "invalid_request", message: "Invalid alert id." })
+
+      const value = input.partial().parse(req.body)
+      const entries = Object.entries(value)
+      if (!entries.length)
+        return res.status(400).json({ error: "invalid_request", message: "At least one field is required." })
+
+      const connection = await pool.getConnection()
+      try {
+        await connection.beginTransaction()
+
+        const [beforeRows] = await connection.query(
+          `SELECT alert_status FROM ecotrace_alerts WHERE alert_id = ? FOR UPDATE`,
+          [id],
+        )
+        if (!beforeRows.length) {
+          await connection.rollback()
+          return res.status(404).json({ error: "not_found", message: "Alert not found." })
+        }
+
+        const before = beforeRows[0]
+        const assignments = []
+        const values = []
+
+        for (const [key, val] of entries) {
+          if (key === "metadata") {
+            assignments.push(`${key} = ?`)
+            values.push(val == null ? null : JSON.stringify(val))
+          } else if (key === "alert_status") {
+            assignments.push(`${key} = ?`)
+            values.push(val)
+            // Set published_at when transitioning from draft to published
+            if (before.alert_status !== "published" && val === "published") {
+              assignments.push("published_at = CURRENT_TIMESTAMP")
+            }
+          } else {
+            assignments.push(`${key} = ?`)
+            values.push(val)
+          }
+        }
+
+        await connection.execute(
+          `UPDATE ecotrace_alerts SET ${assignments.join(", ")} WHERE alert_id = ?`,
+          [...values, id],
+        )
+
+        // If transitioning to published, add recipients
+        const newStatus = value.alert_status
+        if (before.alert_status !== "published" && newStatus === "published") {
+          await connection.execute(
+            `INSERT IGNORE INTO ecotrace_alert_recipients (alert_id, user_id)
+             SELECT ?, u.id
+             FROM users AS u
+             JOIN roles AS r ON r.id = u.role_id
+             WHERE u.status = 'active' AND r.name <> 'admin'`,
+            [id],
+          )
+        }
+
+        await connection.commit()
+
+        const [rows] = await pool.query(
+          `SELECT ${fields} FROM ecotrace_alerts AS a
+           LEFT JOIN ecotrace_events AS e ON e.event_id = a.event_id
+           WHERE a.alert_id = ?`,
+          [id],
+        )
+
+        res.json(rows[0])
+      } catch (error) {
+        await connection.rollback().catch(() => {})
+        throw error
+      } finally {
+        connection.release()
+      }
+    } catch (error) {
+      next(error)
+    }
+  },
+)
+
+router.delete(
+  "/:id",
+  authenticate,
+  requireRoles("admin"),
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id)
+      if (!Number.isInteger(id) || id < 1)
+        return res.status(400).json({ error: "invalid_request", message: "Invalid alert id." })
+
+      const connection = await pool.getConnection()
+      try {
+        await connection.beginTransaction()
+
+        const [rows] = await connection.query(
+          `SELECT alert_id FROM ecotrace_alerts WHERE alert_id = ? FOR UPDATE`,
+          [id],
+        )
+        if (!rows.length) {
+          await connection.rollback()
+          return res.status(404).json({ error: "not_found", message: "Alert not found." })
+        }
+
+        // Delete recipients first (FK constraint)
+        await connection.execute(
+          `DELETE FROM ecotrace_alert_recipients WHERE alert_id = ?`,
+          [id],
+        )
+
+        // Delete the alert
+        await connection.execute(`DELETE FROM ecotrace_alerts WHERE alert_id = ?`, [id])
+
+        await connection.commit()
+        res.status(204).send()
+      } catch (error) {
+        await connection.rollback().catch(() => {})
+        throw error
+      } finally {
+        connection.release()
+      }
+    } catch (error) {
+      next(error)
+    }
+  },
+)
+
 export default router

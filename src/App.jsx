@@ -8,6 +8,7 @@ import SubmissionsView from './components/modules/SubmissionsView'
 import MapView from './components/modules/MapView'
 import Analytics from './components/modules/Analytics'
 import AuditLogs from './components/modules/AuditLogs'
+import AlertManagement from './components/modules/AlertManagement'
 import { LEGACY_NOTIFICATION_TARGET, MODULE_TITLES, usePortal } from './lib/store'
 import { useEscapeToClose } from './lib/useEscapeToClose'
 import { useOutsideClick } from './lib/useOutsideClick'
@@ -518,6 +519,11 @@ export default function App() {
           {visited.includes('logs') && (
             <ModulePane show={active === 'logs'}>
               <AuditLogs />
+            </ModulePane>
+          )}
+          {visited.includes('alerts') && (
+            <ModulePane show={active === 'alerts'}>
+              <AlertManagement />
             </ModulePane>
           )}
         </main>
