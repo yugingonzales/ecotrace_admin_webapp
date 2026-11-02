@@ -80,6 +80,8 @@ function CreateEventForm({ onClose, onCreated }) {
    * @property {string} quota
    * @property {string} start
    * @property {string} end
+   * @property {string} startTime
+   * @property {string} endTime
    * @property {string} zone
    * @property {Boundary} boundary
    * @property {string} guidelines
@@ -101,6 +103,10 @@ function CreateEventForm({ onClose, onCreated }) {
       start: "",
 
       end: "",
+
+      startTime: "09:00",
+
+      endTime: "17:00",
 
       zone: "",
 
@@ -196,6 +202,16 @@ function CreateEventForm({ onClose, onCreated }) {
       return setError("Select at least one mandatory metric before publishing.")
     }
 
+    if (!form.start || !form.end || !form.startTime || !form.endTime) {
+      return setError("Start and end date/time are required.")
+    }
+    if (
+      new Date(`${form.end}T${form.endTime}`) <
+      new Date(`${form.start}T${form.startTime}`)
+    ) {
+      return setError("End date/time must be on or after the start date/time.")
+    }
+
     setError(null)
 
     /** @type {EventDraft} */
@@ -239,6 +255,9 @@ function CreateEventForm({ onClose, onCreated }) {
         start_date: draft.start,
 
         end_date: draft.end,
+
+        start_at: new Date(`${draft.start}T${form.startTime}`).toISOString(),
+        end_at: new Date(`${draft.end}T${form.endTime}`).toISOString(),
 
         trees_per_student: Number(draft.quota),
 
@@ -426,6 +445,30 @@ function CreateEventForm({ onClose, onCreated }) {
                 value={form.end}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, end: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="field-label">Start Time *</label>
+              <input
+                type="time"
+                className="input"
+                required
+                value={form.startTime}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, startTime: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="field-label">End Time *</label>
+              <input
+                type="time"
+                className="input"
+                required
+                value={form.endTime}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, endTime: e.target.value }))
                 }
               />
             </div>
@@ -686,6 +729,8 @@ function apiEventToPortalEvent(event) {
     end: display(end),
     startIso: event.start_date,
     endIso: event.end_date,
+    startAt: event.start_at,
+    endAt: event.end_at,
 
     quota: event.trees_per_student,
     staff: event.attendee_count || 0,
@@ -714,6 +759,12 @@ function EditEventForm({ event, onClose, onSaved }) {
     title: event.name,
     start: event.startIso,
     end: event.endIso,
+    startTime: event.startAt
+      ? new Date(event.startAt).toTimeString().slice(0, 5)
+      : "09:00",
+    endTime: event.endAt
+      ? new Date(event.endAt).toTimeString().slice(0, 5)
+      : "17:00",
     location: event.zone,
     quota: String(event.quota),
     metrics: [...event.metrics],
@@ -739,6 +790,8 @@ function EditEventForm({ event, onClose, onSaved }) {
         event_title: form.title.trim(),
         start_date: form.start,
         end_date: form.end,
+        start_at: new Date(`${form.start}T${form.startTime}`).toISOString(),
+        end_at: new Date(`${form.end}T${form.endTime}`).toISOString(),
         event_location: form.location.trim(),
         event_zone: form.location.trim(),
         trees_per_student: Number(form.quota),
@@ -803,6 +856,30 @@ function EditEventForm({ event, onClose, onSaved }) {
                 value={form.end}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, end: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="field-label">Start time *</label>
+              <input
+                className="input"
+                type="time"
+                required
+                value={form.startTime}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, startTime: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="field-label">End time *</label>
+              <input
+                className="input"
+                type="time"
+                required
+                value={form.endTime}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, endTime: e.target.value }))
                 }
               />
             </div>
